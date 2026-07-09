@@ -34,6 +34,8 @@ export interface Pilot {
   createdAt?: number
   // real 30-day sparkline series, computed server-side from market data
   spark?: number[]
+  // latest real SEC filing, tracked live from EDGAR (fund pilots)
+  latestFiling?: { form: string; filedAt: string; accession: string; manager: string } | null
 }
 
 export const PILOTS: Pilot[] = [

@@ -9,7 +9,7 @@ import { usd } from '../lib/format'
 const STOP_OPTIONS = [0, 5, 10, 20, 30]
 
 export function CopyPanel({ pilot }: { pilot: Pilot }) {
-  const { connected, balance, connect, addFunds, copy, isCopying } = useStore()
+  const { connected, balance, connect, copy, isCopying } = useStore()
   const [amount, setAmount] = useState(500)
   const [stopLoss, setStopLoss] = useState(10)
   const [mode, setMode] = useState<'proportional' | 'fixed'>('proportional')
@@ -130,11 +130,11 @@ export function CopyPanel({ pilot }: { pilot: Pilot }) {
           </button>
         ) : balance <= 0 ? (
           <div>
-            <button className={btn('accent', 'w-full py-3')} onClick={() => addFunds(10000)}>
-              Add $10,000 practice USDC
-            </button>
+            <Link to="/dashboard" className={btn('accent', 'w-full py-3')}>
+              Deposit funds to start
+            </Link>
             <p className="mt-2 text-center text-xs text-muted-2">
-              Practice balance. Deposit real SOL/USDC from your dashboard.
+              Send SOL or USDC from your wallet on the dashboard; it credits automatically.
             </p>
           </div>
         ) : (

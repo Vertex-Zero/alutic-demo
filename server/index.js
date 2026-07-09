@@ -25,12 +25,13 @@ import {
   stop,
   TRADE_FEE_BPS,
 } from './engine.js'
-import { revenueStatus, settleFees, treasuryBalance, authMessage, verifySignature } from './solana.js'
+import { revenueStatus, settleFees, treasuryBalance, authMessage, verifySignature, config } from './solana.js'
 import { pilotHistory, accountHistory, realStats } from './history.js'
 import { PILOTS } from './pilots.gen.mjs'
 import { allVaults, vaultAsPilot, createVault, pilotPlatformStats, recentActivity } from './engine.js'
 import { depositAddressFor, startDepositWatcher } from './deposits.js'
 import { resolveUniverse, venueStatus, quoteBuy } from './jupiter.js'
+import { startFilingsWatcher, filingFor } from './filings.js'
 
 const PORT = process.env.PORT || 8787
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
@@ -80,6 +81,7 @@ app.get('/api/pilots', async (_req, res) => {
             : {}),
           copiers: platform.copiers,
           aum: platform.aum,
+          latestFiling: filingFor(p.id),
         }
       }),
     )
@@ -164,7 +166,7 @@ app.get('/api/deposit-address', (req, res) => {
   const address = requireAddress(req, res)
   if (!address) return
   getOrCreateAccount(address)
-  res.json(depositAddressFor(address))
+  res.json({ ...depositAddressFor(address), rpc: config.rpc })
 })
 
 /** Execution venue status: real xStock mints resolved on Jupiter + trading mode. */
@@ -204,15 +206,10 @@ app.get('/api/portfolio', (req, res) => {
   res.json({ account: accountView(account) })
 })
 
-app.post('/api/deposit', (req, res) => {
-  const address = requireAddress(req, res)
-  if (!address) return
-  try {
-    const account = deposit(getOrCreateAccount(address), Number(req.body?.amount))
-    res.json({ account: accountView(account) })
-  } catch (e) {
-    res.status(e.status ?? 500).json({ error: e.message })
-  }
+// Practice deposits are retired: balances come only from real on-chain
+// transfers detected by the deposit watcher.
+app.post('/api/deposit', (_req, res) => {
+  res.status(403).json({ error: 'practice deposits are disabled; send SOL/USDC to your deposit address' })
 })
 
 app.post('/api/copy', (req, res) => {
@@ -250,6 +247,7 @@ if (fs.existsSync(DIST)) {
 startPriceFeed()
 startEngine()
 startDepositWatcher()
+startFilingsWatcher()
 resolveUniverse().catch((e) => console.warn('[jupiter] resolve failed:', e.message))
 
 app.listen(PORT, () => {

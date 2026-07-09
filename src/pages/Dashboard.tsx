@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useStore, type Position, type Trade } from '../lib/store'
+import { useStore, depositFromWallet, type Position, type Trade } from '../lib/store'
 import { AreaChart, Sparkline } from '../components/Chart'
 import { Avatar, btn } from '../components/ui'
 import { NumberTicker } from '../components/effects'
@@ -73,9 +73,6 @@ export function Dashboard() {
             </p>
           </div>
           <div className="flex gap-2">
-            <button className={btn('secondary', 'px-4 py-2.5')} onClick={() => store.addFunds(10000)}>
-              Add $10k practice funds
-            </button>
             <button className={btn('ghost', 'px-4 py-2.5')} onClick={store.disconnect}>
               Disconnect
             </button>
@@ -203,8 +200,11 @@ export function Dashboard() {
 }
 
 function DepositCard({ address }: { address: string }) {
-  const [info, setInfo] = useState<{ depositAddress: string; network: string } | null>(null)
+  const [info, setInfo] = useState<{ depositAddress: string; network: string; rpc: string } | null>(null)
   const [copied, setCopied] = useState(false)
+  const [amount, setAmount] = useState('0.1')
+  const [sending, setSending] = useState(false)
+  const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null)
 
   useEffect(() => {
     if (!address) return
@@ -223,25 +223,65 @@ function DepositCard({ address }: { address: string }) {
     })
   }
 
+  const send = async () => {
+    const sol = Number(amount)
+    if (!(sol > 0)) return
+    setSending(true)
+    setStatus(null)
+    try {
+      const sig = await depositFromWallet(info.depositAddress, sol, info.rpc)
+      setStatus({ ok: true, msg: `Sent ${sol} SOL. It will credit within ~30 seconds. Signature ${sig.slice(0, 16)}…` })
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'transfer failed'
+      setStatus({
+        ok: false,
+        msg:
+          info.network === 'devnet'
+            ? `${msg} — note: the app is on devnet right now, so your wallet needs devnet SOL (Phantom: Settings > Developer Settings > Testnet Mode, then use a faucet).`
+            : msg,
+      })
+    }
+    setSending(false)
+  }
+
   return (
-    <div className="card mt-6 flex flex-wrap items-center gap-x-6 gap-y-3 rounded-2xl px-5 py-4">
-      <div className="min-w-0">
-        <div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted-2">
-          Your deposit address · on-chain
-          <span className={`rounded-full px-2 py-0.5 ${info.network === 'mainnet' ? 'bg-accent/[0.1] text-accent' : 'bg-gold/[0.1] text-gold'}`}>
-            {info.network}
-          </span>
+    <div className="card mt-6 rounded-2xl px-5 py-4">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted-2">
+            Deposit funds · on-chain
+            <span className={`rounded-full px-2 py-0.5 ${info.network === 'mainnet' ? 'bg-accent/[0.1] text-accent' : 'bg-gold/[0.1] text-gold'}`}>
+              {info.network}
+            </span>
+          </div>
+          <div className="tnum mt-1 break-all text-sm text-fg">{info.depositAddress}</div>
         </div>
-        <div className="tnum mt-1 break-all text-sm text-fg">{info.depositAddress}</div>
+        <div className="ml-auto flex items-center gap-2">
+          <div className="flex items-center gap-1.5 rounded-xl border-2 border-line bg-white px-3 py-2">
+            <input
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              inputMode="decimal"
+              className="tnum w-16 bg-transparent text-right text-sm text-fg focus:outline-none"
+            />
+            <span className="text-xs font-extrabold text-muted-2">SOL</span>
+          </div>
+          <button onClick={() => void send()} disabled={sending} className={btn('accent', 'px-4 py-2 text-xs')}>
+            {sending ? 'Check Phantom…' : 'Deposit from Phantom'}
+          </button>
+          <button onClick={copy} className={btn('secondary', 'px-4 py-2 text-xs')}>
+            {copied ? '✓ Copied' : 'Copy address'}
+          </button>
+        </div>
       </div>
-      <div className="ml-auto flex items-center gap-3">
-        <button onClick={copy} className={btn('secondary', 'px-4 py-2 text-xs')}>
-          {copied ? '✓ Copied' : 'Copy address'}
-        </button>
-      </div>
-      <p className="w-full text-xs leading-5 text-muted-2">
-        Send SOL or USDC on Solana ({info.network}) and your balance credits automatically within ~30 seconds at the
-        live price. Deposits are free.
+      {status && (
+        <p className={`mt-3 rounded-lg px-3 py-2 text-xs font-bold ${status.ok ? 'bg-accent/[0.08] text-accent' : 'bg-down/[0.08] text-down'}`}>
+          {status.msg}
+        </p>
+      )}
+      <p className="mt-3 text-xs leading-5 text-muted-2">
+        Use the button, or send SOL/USDC to the address from any wallet. Deposits credit automatically at the live
+        price within ~30 seconds, free of charge.
       </p>
     </div>
   )

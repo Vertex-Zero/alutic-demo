@@ -85,7 +85,6 @@ interface StoreApi {
   closeWalletModal: () => void
   connectWith: (option: WalletOption) => Promise<boolean>
   disconnect: () => void
-  addFunds: (n: number) => void
   copy: (pilotId: string, allocation: number, opts?: { stopLoss?: number; copyMode?: Position['copyMode'] }) => void
   stop: (pilotId: string) => void
   isCopying: (pilotId: string) => boolean
@@ -161,6 +160,33 @@ if (typeof window !== 'undefined') {
   } catch {
     /* older browsers */
   }
+}
+
+/**
+ * Send a real SOL transfer from the user's Phantom wallet to their Alutic
+ * deposit address. Phantom signs; we submit to the app's RPC so it works
+ * regardless of which network Phantom's UI is set to.
+ */
+export async function depositFromWallet(to: string, sol: number, rpc: string): Promise<string> {
+  const provider = solanaProviderFor('phantom') as AnyWindow | null
+  if (!provider) throw new Error('Phantom not found in this browser')
+  const web3 = await import('@solana/web3.js')
+  const res = await provider.connect()
+  const fromAddress = res?.publicKey?.toString() ?? provider.publicKey?.toString()
+  if (!fromAddress) throw new Error('could not read your wallet address')
+  const from = new web3.PublicKey(fromAddress)
+  const connection = new web3.Connection(rpc, 'confirmed')
+  const tx = new web3.Transaction().add(
+    web3.SystemProgram.transfer({
+      fromPubkey: from,
+      toPubkey: new web3.PublicKey(to),
+      lamports: Math.round(sol * web3.LAMPORTS_PER_SOL),
+    }),
+  )
+  tx.feePayer = from
+  tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash
+  const signed = await provider.signTransaction(tx)
+  return connection.sendRawTransaction(signed.serialize())
 }
 
 async function standardSession(wallet: StandardWallet): Promise<WalletSession | null> {
@@ -467,7 +493,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         addressRef.current = ''
         setAccount(null)
       },
-      addFunds: (n) => apiAction('/api/deposit', { amount: n }),
       copy: (pilotId, allocation, opts) =>
         apiAction('/api/copy', { pilotId, allocation, stopLoss: opts?.stopLoss ?? 0, copyMode: opts?.copyMode }),
       stop: (pilotId) => apiAction('/api/stop', { pilotId }),

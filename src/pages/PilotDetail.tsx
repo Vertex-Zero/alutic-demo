@@ -98,6 +98,17 @@ export function PilotDetail() {
             </div>
           </div>
 
+          {pilot.latestFiling && (
+            <p className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted">
+              <span className="flex items-center gap-1.5 rounded-full bg-accent/[0.1] px-2.5 py-0.5 font-extrabold uppercase tracking-wide text-accent">
+                <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-accent" />
+                Tracking SEC EDGAR
+              </span>
+              latest {pilot.latestFiling.form} from {pilot.latestFiling.manager} filed{' '}
+              <span className="tnum">{pilot.latestFiling.filedAt}</span> · checked for new filings every 6 hours
+            </p>
+          )}
+
           {pilot.category === 'Community' && pilot.creator && (
             <p className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted">
               <span className="rounded-full bg-accent/[0.1] px-2.5 py-0.5 font-extrabold uppercase tracking-wide text-accent">
