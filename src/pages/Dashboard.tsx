@@ -121,7 +121,6 @@ export function Dashboard() {
             <Tile
               label="Fees paid · 0.25%/trade"
               value={usd(feesPaid, { decimals: 2 })}
-              sub="$0 subscription"
               accent="var(--color-accent)"
             />
           </div>

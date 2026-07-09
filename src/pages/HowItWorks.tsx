@@ -137,10 +137,7 @@ export function HowItWorks() {
             ))}
           </div>
           <Reveal>
-            <div className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-3 border-t border-line pt-6 text-[11px] font-extrabold uppercase tracking-[0.16em] text-muted">
-              <span><b className="text-fg">$0</b> subscription</span>
-              <span><b className="text-fg">$0</b> deposit & withdrawal</span>
-              <span><b className="text-fg">$0</b> AUM fee</span>
+            <div className="mt-10 border-t border-line pt-6 text-[11px] font-extrabold uppercase tracking-[0.16em] text-muted">
               <span><b className="text-accent">0.25%</b> per executed trade, the whole model</span>
             </div>
           </Reveal>

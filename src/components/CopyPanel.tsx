@@ -32,12 +32,7 @@ export function CopyPanel({ pilot }: { pilot: Pilot }) {
   return (
     <div className="card relative overflow-hidden rounded-2xl p-6">
       <div className="glow-accent pointer-events-none absolute -right-16 -top-16 h-48 w-48" />
-      <div className="flex items-center justify-between">
-        <h3 className="font-display text-lg font-medium">Copy this pilot</h3>
-        <span className="rounded-full border border-accent/25 bg-accent/[0.08] px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-[0.1em] text-accent">
-          $0 / month
-        </span>
-      </div>
+      <h3 className="font-display text-lg font-medium">Copy this pilot</h3>
 
       {/* allocation */}
       <label className="mt-6 block text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted-2">
@@ -120,7 +115,6 @@ export function CopyPanel({ pilot }: { pilot: Pilot }) {
           label="Each auto-mirrored trade"
           value={`${usd(perTradeLow, { decimals: 2 })} - ${usd(perTradeHigh, { decimals: 2 })}`}
         />
-        <Row label="Subscription · deposit fee" value="$0 · $0" accent />
       </div>
       {/* action */}
       <div className="mt-5">

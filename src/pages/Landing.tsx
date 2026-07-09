@@ -97,9 +97,8 @@ export function Landing() {
                 per executed trade. that's the entire business model.
               </p>
               <p className="mt-4 max-w-lg text-[15px] font-semibold leading-7 text-white/75">
-                There's no subscription and we never take a cut of your profits. Alutic only earns when your
-                autopilot actually trades, which keeps us focused on executing your pilots' moves faithfully
-                instead of locking you in.
+                We never take a cut of your profits. Alutic only earns when your autopilot actually trades, which
+                keeps us focused on executing your pilots' moves faithfully instead of locking you in.
               </p>
               <div className="mt-7 max-w-lg rounded-2xl border-2 border-white/25 bg-white/[0.12] p-5">
                 <div className="text-[10px] font-extrabold uppercase tracking-[2px] text-white/60">Worked example</div>

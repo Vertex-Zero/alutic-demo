@@ -19,9 +19,6 @@ export function Footer() {
               Auto copy-trade the smart money onchain. You pay {TRADE_FEE_BPS / 100}% when a trade actually
               executes, and that's the whole bill.
             </p>
-            <p className="tnum mt-5 text-[11px] uppercase tracking-[0.18em] text-white/35">
-              $0 / month · $0 deposit · 0.25% / trade
-            </p>
           </div>
           <FooterCol
             title="Product"
