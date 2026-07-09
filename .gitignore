@@ -1,0 +1,20 @@
+# dependencies & build output
+node_modules
+dist
+dist-ssr
+*.local
+.vite
+tsconfig.tsbuildinfo
+server/pilots.gen.mjs
+
+# runtime state & SECRETS — never commit these.
+# treasury.json and deposits.json contain Solana PRIVATE KEYS.
+server/treasury.json
+server/deposits.json
+server/db.json
+server/revenue.json
+server/config.json
+.env
+
+# os junk
+.DS_Store

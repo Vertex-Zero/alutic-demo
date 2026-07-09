@@ -1,0 +1,168 @@
+@import 'tailwindcss';
+
+/* ─────────────────────────────────────────────────────────────
+   Alutic design system — "investing, but it feels like a game"
+   Clean white, cash green, chunky 3D buttons, rounded cards.
+   Nunito everywhere; Feather Bold for display headings.
+   ───────────────────────────────────────────────────────────── */
+
+@theme {
+  --color-paper: #ffffff;      /* page background */
+  --color-paper-2: #f7f7f7;    /* grouped sections */
+  --color-surface: #ffffff;    /* cards */
+  --color-surface-2: #f7f7f7;  /* wells / inputs */
+  --color-line: #e5e5e5;       /* borders (2px, Duolingo-style) */
+  --color-line-2: #cfcfcf;     /* stronger borders / shadows */
+
+  --color-fg: #4b4b4b;         /* gray ink */
+  --color-muted: #777777;      /* secondary text */
+  --color-muted-2: #afafaf;    /* tertiary / labels */
+
+  --color-accent: #00c06e;     /* cash green */
+  --color-accent-2: #33d08c;
+  --color-accent-dim: #00a65f; /* hover */
+  --color-accent-shadow: #009554;
+
+  --color-navy: #10123e;       /* dark panels & headings */
+  --color-blue: #1cb0f6;       /* sky blue secondary */
+  --color-blue-shadow: #1899d6;
+
+  --color-up: #00a85f;
+  --color-up-bg: #e3f8ee;
+  --color-down: #ff4b4b;
+  --color-down-bg: #ffeaea;
+  --color-down-shadow: #cc3c3c;
+  --color-gold: #e6a700;       /* readable golden for text */
+  --color-golden: #ffc800;     /* pure golden for fills */
+  --color-orange: #ff9600;
+
+  --font-sans: 'Nunito', 'DIN Round Pro', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: 'Feather Bold', 'Nunito', -apple-system, sans-serif;
+  --font-mono: 'Nunito', -apple-system, sans-serif;
+
+  --animate-pulse-dot: pulse-dot 2.4s ease-in-out infinite;
+  --animate-ticker: ticker 42s linear infinite;
+  --animate-fade-up: fade-up 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-fade-down: fade-down 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-hero-rise: hero-rise 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-bounce-soft: bounce-soft 2.6s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.8); }
+}
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(26px); filter: blur(6px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+@keyframes fade-down {
+  from { opacity: 0; transform: translateY(-14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes hero-rise {
+  from { opacity: 0; transform: translateY(64px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes bounce-soft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+@keyframes feed-in {
+  from { opacity: 0; transform: translateY(-10px); background: color-mix(in srgb, var(--color-accent) 14%, transparent); }
+  60% { background: color-mix(in srgb, var(--color-accent) 9%, transparent); }
+  to { opacity: 1; transform: translateY(0); background: transparent; }
+}
+
+* { border-color: var(--color-line); -webkit-tap-highlight-color: transparent; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--color-paper);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  font-weight: 500;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior: none;
+}
+
+::selection { background: color-mix(in srgb, var(--color-accent) 24%, transparent); }
+
+/* Feather Bold has no italic — keep display accents upright */
+.font-display, .font-display em { font-style: normal; }
+.font-display { letter-spacing: 0.2px; }
+
+/* bold tabular-ish figures */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Duolingo-style card: white, fat 2px border, lift on hover */
+.card {
+  background: var(--color-surface);
+  border: 2px solid var(--color-line);
+}
+.card-hover { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+}
+
+/* section divider (was a broadsheet double rule) */
+.rule-double { border-top: 2px solid var(--color-line); }
+.rule-double::after { content: none; }
+
+/* return pills */
+.pill-up { color: var(--color-up); background: var(--color-up-bg); }
+.pill-down { color: var(--color-down); background: var(--color-down-bg); }
+.t-up { color: var(--color-up); }
+.t-down { color: var(--color-down); }
+
+/* frosted chip */
+.liquid-glass {
+  background: rgba(255, 255, 255, 0.85);
+  border: 2px solid var(--color-line);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* soft green wash */
+.glow-accent {
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--color-accent) 14%, transparent), transparent 70%);
+}
+
+/* hero gradient — green fading to white, like a sunny start screen */
+.hero-gradient {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-accent) 13%, #ffffff) 0%, #ffffff 62%);
+}
+
+.fade-mask-x {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
+}
+
+/* new ledger rows flash green then settle */
+.feed-in { animation: feed-in 1s ease-out both; }
+
+.pt-safe { padding-top: env(safe-area-inset-top); }
+.pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+
+button { cursor: pointer; font-family: inherit; }
+input, select { font-family: inherit; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition-duration: 0.01ms !important; }
+}

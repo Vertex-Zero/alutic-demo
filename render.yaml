@@ -1,0 +1,21 @@
+# One-click deploy on Render: New + > Blueprint > point at this repo.
+services:
+  - type: web
+    name: alutic
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run gen && npm run build
+    startCommand: node server/index.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: FEE_RECIPIENT
+        value: DjAs88PBK9vmLGXVRPUUm9s3ECL4zqZWxpRKedZtAkMk
+      - key: SOLANA_RPC
+        value: https://api.devnet.solana.com
+      - key: NODE_VERSION
+        value: '22'
+    # NOTE: the free plan has an ephemeral disk, so accounts/vaults/fee ledger
+    # (server/*.json) reset on every deploy and the treasury keypair is
+    # regenerated. Before taking real deposits, attach a persistent disk
+    # (paid plan) mounted at /opt/render/project/src/server or move state
+    # to a database.
