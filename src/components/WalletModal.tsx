@@ -20,6 +20,14 @@ function WalletIcon({ id, icon, dim }: { id: string; icon?: string; dim?: boolea
   return <span className={dim ? 'grayscale' : ''}>{GLYPH[id] ?? '👛'}</span>
 }
 
+const isMobile = () =>
+  typeof navigator !== 'undefined' && /iphone|ipad|ipod|android/i.test(navigator.userAgent)
+
+/** Universal link that reopens this page inside Phantom's in-app browser,
+ *  where the wallet is available and connect works like on desktop. */
+const phantomDeepLink = () =>
+  `https://phantom.app/ul/browse/${encodeURIComponent(window.location.href)}?ref=${encodeURIComponent(window.location.origin)}`
+
 export function WalletModal() {
   const { walletModalOpen, closeWalletModal, connectWith } = useStore()
   const navigate = useNavigate()
@@ -107,7 +115,32 @@ export function WalletModal() {
               ))}
             </div>
 
-            {missing.length > 0 && (
+            {missing.length > 0 && isMobile() && (
+              <div className="mt-2 space-y-2">
+                <a
+                  href={phantomDeepLink()}
+                  className="flex w-full items-center gap-3 rounded-2xl border-2 border-accent bg-accent/[0.05] px-4 py-3"
+                >
+                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-paper-2 text-lg">
+                    <WalletIcon id="phantom" />
+                  </span>
+                  <span className="flex-1">
+                    <span className="block text-[15px] font-extrabold text-fg">Open in Phantom</span>
+                    <span className="block text-xs text-muted-2">Continues in the Phantom app's browser</span>
+                  </span>
+                  <span className="text-xs font-extrabold uppercase tracking-wide text-accent">Open →</span>
+                </a>
+                <p className="px-1 pt-1 text-xs leading-5 text-muted-2">
+                  On phones, wallets live inside their own apps. This reopens Alutic inside Phantom, where you can
+                  connect normally. Don't have Phantom yet?{' '}
+                  <a href="https://phantom.app/download" target="_blank" rel="noreferrer" className="font-bold text-accent underline">
+                    Get it here.
+                  </a>
+                </p>
+              </div>
+            )}
+
+            {missing.length > 0 && !isMobile() && (
               <div className="mt-2 space-y-2">
                 {missing.map((w) => (
                   <a
