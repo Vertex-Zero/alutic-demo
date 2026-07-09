@@ -153,7 +153,7 @@ export function Landing() {
                     {p.spark && p.spark.length > 1 && <Sparkline data={p.spark} width={110} height={40} />}
                   </div>
                   <div className="mt-4 border-t border-line pt-3 text-xs text-muted-2">
-                    <span className="tnum">{p.trades30d}</span> trades / 30D · <span className="tnum">{p.holdings.length}</span> holdings
+                    ~<span className="tnum">{p.trades30d}</span> trades / 30D · <span className="tnum">{p.holdings.length}</span> holdings
                   </div>
                 </Link>
               </Reveal>

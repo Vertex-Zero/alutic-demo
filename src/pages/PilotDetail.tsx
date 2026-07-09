@@ -169,7 +169,11 @@ export function PilotDetail() {
             <Stat label="Sharpe" value={pilot.sharpe.toFixed(2)} />
             <Stat label="Max drawdown (1Y)" value={pct(pilot.maxDrawdown, false)} accent="var(--color-down)" />
             <Stat label="Avg. hold" value={pilot.avgHold} />
-            <Stat label="Trades / 30D" value={String(pilot.trades30d)} />
+            {pilot.latestFiling?.positionChanges != null ? (
+              <Stat label="Position changes (last qtr)" value={String(pilot.latestFiling.positionChanges)} />
+            ) : (
+              <Stat label="Trades / 30D (est.)" value={`~${pilot.trades30d}`} />
+            )}
             <Stat label="7D return" value={pct(pilot.roi.d7)} accent={pilot.roi.d7 >= 0 ? 'var(--color-up)' : 'var(--color-down)'} />
           </div>
 
