@@ -29,7 +29,7 @@ const SECTIONS = [
     body: [
       'Alutic stores your wallet address, account balances, positions, and trade history to operate the service. No personal information beyond the wallet address is collected.',
       'On-chain activity (deposits, fee settlements) is public by the nature of blockchains.',
-      'No analytics trackers or third-party advertising cookies are used.',
+      'We use Microsoft Clarity to understand how the site is used, through heatmaps and session recordings. Clarity may use cookies and collects usage data under the Microsoft Privacy Statement. No advertising cookies are used.',
     ],
   },
 ]

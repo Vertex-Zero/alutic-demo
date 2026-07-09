@@ -14,6 +14,8 @@ services:
         value: https://api.devnet.solana.com
       - key: NODE_VERSION
         value: '22'
+      - key: VITE_CLARITY_ID
+        sync: false # paste your Microsoft Clarity project ID in the Render dashboard
     # NOTE: the free plan has an ephemeral disk, so accounts/vaults/fee ledger
     # (server/*.json) reset on every deploy and the treasury keypair is
     # regenerated. Before taking real deposits, attach a persistent disk

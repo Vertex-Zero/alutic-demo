@@ -15,6 +15,13 @@ The repo ships with `render.yaml`: in Render choose **New + > Blueprint**, point
 (`npm ci && npm run gen && npm run build`) and serves everything (site + API) from one Node service with
 `/api/health` as the health check. `FEE_RECIPIENT` and `SOLANA_RPC` are set as environment variables.
 
+### Analytics (Microsoft Clarity)
+
+1. Create a project at [clarity.microsoft.com](https://clarity.microsoft.com) for `alutic.ai` and copy its
+   Project ID (a short code like `abc1de2fgh`).
+2. Set `VITE_CLARITY_ID` to that ID in Render's environment settings (or `.env.local` for local builds) and
+   redeploy. The tag only loads in production builds when the ID is present.
+
 Two things to know before real traffic:
 - The free plan's disk is ephemeral: accounts, vaults, and the fee ledger (`server/*.json`) reset on each deploy,
   and the treasury keypair is regenerated. Attach a persistent disk or move state to a database before taking
