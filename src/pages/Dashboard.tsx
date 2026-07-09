@@ -237,7 +237,7 @@ function DepositCard({ address }: { address: string }) {
         ok: false,
         msg:
           info.network === 'devnet'
-            ? `${msg} — note: the app is on devnet right now, so your wallet needs devnet SOL (Phantom: Settings > Developer Settings > Testnet Mode, then use a faucet).`
+            ? `${msg}, note: the app is on devnet right now, so your wallet needs devnet SOL (Phantom: Settings > Developer Settings > Testnet Mode, then use a faucet).`
             : msg,
       })
     }
@@ -281,8 +281,72 @@ function DepositCard({ address }: { address: string }) {
       )}
       <p className="mt-3 text-xs leading-5 text-muted-2">
         Use the button, or send SOL/USDC to the address from any wallet. Deposits credit automatically at the live
-        price within ~30 seconds, free of charge.
+        price within ~30 seconds, free of charge. To cash out, stop any active copies so the money is back in your
+        balance, then withdraw below.
       </p>
+      <WithdrawRow />
+    </div>
+  )
+}
+
+function WithdrawRow() {
+  const { address, balance } = useStore()
+  const [amount, setAmount] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null)
+
+  const withdraw = async () => {
+    const usd = Number(amount)
+    if (!(usd > 0)) return
+    setBusy(true)
+    setStatus(null)
+    try {
+      const res = await fetch('/api/withdraw', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ address, amount: usd }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'withdrawal failed')
+      setStatus({ ok: true, msg: `Sent ${json.sol.toFixed(4)} SOL to your wallet. Signature ${json.sig.slice(0, 16)}…` })
+      setAmount('')
+    } catch (e) {
+      setStatus({ ok: false, msg: e instanceof Error ? e.message : 'withdrawal failed' })
+    }
+    setBusy(false)
+  }
+
+  return (
+    <div className="mt-3 border-t border-line pt-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted-2">Withdraw to your wallet</span>
+        <div className="ml-auto flex items-center gap-2">
+          <div className="flex items-center gap-1.5 rounded-xl border-2 border-line bg-white px-3 py-2">
+            <span className="text-xs font-extrabold text-muted-2">$</span>
+            <input
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              inputMode="decimal"
+              placeholder={balance > 0 ? balance.toFixed(2) : '0.00'}
+              className="tnum w-20 bg-transparent text-right text-sm text-fg focus:outline-none"
+            />
+          </div>
+          <button
+            onClick={() => setAmount(balance.toFixed(2))}
+            className="rounded-full border border-line px-2.5 py-1 text-xs font-bold text-fg/70 hover:border-line-2"
+          >
+            Max
+          </button>
+          <button onClick={() => void withdraw()} disabled={busy || !(Number(amount) > 0)} className={btn('primary', 'px-4 py-2 text-xs')}>
+            {busy ? 'Sending…' : 'Withdraw'}
+          </button>
+        </div>
+      </div>
+      {status && (
+        <p className={`mt-2 rounded-lg px-3 py-2 text-xs font-bold ${status.ok ? 'bg-accent/[0.08] text-accent' : 'bg-down/[0.08] text-down'}`}>
+          {status.msg}
+        </p>
+      )}
     </div>
   )
 }
@@ -344,6 +408,7 @@ const KIND_STYLE: Record<Trade['kind'], [string, string]> = {
   mirror: ['AUTO', 'text-blue bg-blue/[0.08] border-blue/25'],
   exit: ['EXIT', 'text-down bg-down/[0.07] border-down/25'],
   deposit: ['FUND', 'text-gold bg-gold/[0.08] border-gold/30'],
+  withdraw: ['OUT', 'text-navy bg-navy/[0.06] border-navy/20'],
 }
 
 function TradeRow({ trade }: { trade: Trade }) {

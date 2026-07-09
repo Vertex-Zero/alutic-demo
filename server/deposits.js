@@ -60,6 +60,41 @@ export function depositAddressFor(userAddress) {
   }
 }
 
+/**
+ * Real withdrawal: send SOL from the user's deposit account back to their
+ * own wallet. Capped by what's actually on-chain; the watcher's baseline
+ * is updated so the outflow isn't misread as a new deposit later.
+ */
+export async function withdrawToWallet(userAddress, lamports) {
+  const entry = book[userAddress]
+  if (!entry) throw Object.assign(new Error('no deposit account for this address'), { status: 404 })
+  const kp = Keypair.fromSecretKey(Uint8Array.from(entry.secretKey))
+  const connection = new Connection(config.rpc, 'confirmed')
+
+  const onchain = await connection.getBalance(kp.publicKey)
+  const feeBuffer = 10_000
+  if (onchain < lamports + feeBuffer) {
+    throw Object.assign(
+      new Error(
+        `only ${(Math.max(0, onchain - feeBuffer) / LAMPORTS_PER_SOL).toFixed(6)} SOL is on-chain in your deposit account; withdrawals are capped by real funds`,
+      ),
+      { status: 400 },
+    )
+  }
+
+  const { SystemProgram, Transaction } = await import('@solana/web3.js')
+  const tx = new Transaction().add(
+    SystemProgram.transfer({ fromPubkey: kp.publicKey, toPubkey: new PublicKey(userAddress), lamports }),
+  )
+  const sig = await connection.sendTransaction(tx, [kp])
+  await connection.confirmTransaction(sig, 'confirmed')
+
+  entry.seenSol = await connection.getBalance(kp.publicKey)
+  dirty = true
+  persist()
+  return sig
+}
+
 async function usdcBalance(connection, owner) {
   try {
     const res = await connection.getParsedTokenAccountsByOwner(owner, { mint: new PublicKey(USDC_MINT) })

@@ -20,7 +20,7 @@ import {
   getOrCreateAccount,
   getAccount,
   accountView,
-  deposit,
+  recordWithdrawal,
   copy,
   stop,
   TRADE_FEE_BPS,
@@ -29,7 +29,7 @@ import { revenueStatus, settleFees, treasuryBalance, authMessage, verifySignatur
 import { pilotHistory, accountHistory, realStats } from './history.js'
 import { PILOTS } from './pilots.gen.mjs'
 import { allVaults, vaultAsPilot, createVault, pilotPlatformStats, recentActivity } from './engine.js'
-import { depositAddressFor, startDepositWatcher } from './deposits.js'
+import { depositAddressFor, startDepositWatcher, withdrawToWallet } from './deposits.js'
 import { resolveUniverse, venueStatus, quoteBuy } from './jupiter.js'
 import { startFilingsWatcher, filingFor } from './filings.js'
 
@@ -210,6 +210,34 @@ app.get('/api/portfolio', (req, res) => {
 // transfers detected by the deposit watcher.
 app.post('/api/deposit', (_req, res) => {
   res.status(403).json({ error: 'practice deposits are disabled; send SOL/USDC to your deposit address' })
+})
+
+/**
+ * Withdraw: sends SOL from the user's deposit account back to their own
+ * wallet at the live price, then debits their balance. Free, capped by
+ * both the account balance and the real on-chain funds.
+ */
+app.post('/api/withdraw', async (req, res) => {
+  const address = requireAddress(req, res)
+  if (!address) return
+  if (!SOL_RE.test(address)) {
+    return res.status(400).json({ error: 'withdrawals require a Solana wallet address' })
+  }
+  const usd = Number(req.body?.amount)
+  const account = getAccount(address)
+  if (!account) return res.status(404).json({ error: 'no account for that address' })
+  if (!(usd > 0)) return res.status(400).json({ error: 'amount must be positive' })
+  if (usd > account.balance + 0.01) return res.status(400).json({ error: 'amount exceeds your available balance' })
+  const solPrice = priceOf('SOL')
+  if (!(solPrice > 0)) return res.status(503).json({ error: 'no live SOL price available' })
+  try {
+    const sol = usd / solPrice
+    const sig = await withdrawToWallet(address, Math.floor(sol * 1e9))
+    const updated = recordWithdrawal(address, usd, { sol, sig })
+    res.json({ account: accountView(updated), sig, sol })
+  } catch (e) {
+    res.status(e.status ?? 500).json({ error: e.message })
+  }
 })
 
 app.post('/api/copy', (req, res) => {

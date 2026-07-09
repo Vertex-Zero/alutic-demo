@@ -79,7 +79,7 @@ server/
 
 Connect is **Phantom-first** (real Solana wallet): one click to connect, then **one** `signMessage`
 authorization, verified server-side with ed25519 (tweetnacl). After that single signature there are no wallet
-popups ever — the engine executes trades server-side. MetaMask (EIP-1193) and a generated session address are
+popups ever, the engine executes trades server-side. MetaMask (EIP-1193) and a generated session address are
 fallbacks. When real funds move, the same one-approval UX maps to an SPL token **delegate approval** (capped at
 the user's allocation, trade-only, revocable).
 
@@ -91,7 +91,7 @@ pending USD amount as SOL, converted at the live SOL price, from the server trea
 
 Setup:
 1. Put your Solana address in `server/config.json` → `"feeRecipient": "YOUR_ADDRESS"` (or env `FEE_RECIPIENT`).
-2. The treasury keypair auto-generates at `server/treasury.json` (keep it secret). Fund it — on devnet:
+2. The treasury keypair auto-generates at `server/treasury.json` (keep it secret). Fund it, on devnet:
    `solana airdrop 2 <treasuryAddress> -u devnet`. Default RPC is devnet; set `SOLANA_RPC` to mainnet to go live.
 3. `GET /api/fees` shows accrued/pending/settled and the treasury balance; `POST /api/fees/settle` executes a
    real transfer and returns the transaction signature.
@@ -120,7 +120,7 @@ Setup:
 
 14 built-in portfolios across four categories: **Politician** (Pelosi, Tuberville, Khanna, Capitol Bulls),
 **Hedge Fund** (Buffett, Burry, Ackman, Dalio, Cohen, Druckenmiller, Renaissance), **AI** (AI Alpha/Claude,
-DeepSeek Fund) and **Index** (Inverse Cramer) — plus **Community vaults**: anyone can create a vault
+DeepSeek Fund) and **Index** (Inverse Cramer), plus **Community vaults**: anyone can create a vault
 (`/create`), it lists on the leaderboard, and the creator earns half of every trade fee copiers pay
 (Hyperliquid-style creator economics).
 
@@ -135,7 +135,7 @@ chunky 3D buttons, 2px-border rounded cards, uniform neutral chips, single-color
 ## Real funds
 
 - **Deposits are real:** every account gets its own Solana deposit address (`server/deposits.json` holds the
-  keys — protect it). A watcher polls the chain and credits SOL/USDC deposits at the live price. Devnet by
+  keys, protect it). A watcher polls the chain and credits SOL/USDC deposits at the live price. Devnet by
   default; set `SOLANA_RPC` to mainnet to accept real value.
 - **The venue is real:** the server resolves the actual xStock mints on Solana mainnet via Jupiter (35 of our
   tickers exist as xStocks) and fetches real, executable swap quotes (e.g. $250 → 1.27 NVDAx via Raydium CLMM).

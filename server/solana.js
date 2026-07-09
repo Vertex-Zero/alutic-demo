@@ -3,7 +3,7 @@
  *
  * Fee flow (the "best way" for micro-fees):
  *   1. Every executed trade accrues its 0.25% fee to the protocol
- *      revenue ledger (accrueFee) — off-chain accounting, instant, free.
+ *      revenue ledger (accrueFee), off-chain accounting, instant, free.
  *   2. Fees settle ON-CHAIN in batches: settleFees() sends the accrued
  *      USD amount as SOL (converted at the live SOL price) from the
  *      server's treasury keypair to YOUR address. Batching matters:

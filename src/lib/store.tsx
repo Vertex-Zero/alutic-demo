@@ -12,7 +12,7 @@ export const TRADE_FEE_BPS = 25
 export const TRADE_FEE_RATE = TRADE_FEE_BPS / 10_000
 export const feeOn = (notional: number) => notional * TRADE_FEE_RATE
 
-export type TradeKind = 'copy' | 'mirror' | 'exit' | 'deposit'
+export type TradeKind = 'copy' | 'mirror' | 'exit' | 'deposit' | 'withdraw'
 
 export interface Trade {
   id: string
@@ -284,7 +284,7 @@ interface WalletSession {
 
 /**
  * Connect through a specific wallet. Solana wallets sign ONE autopilot
- * authorization message; after that there are no popups, ever — trades
+ * authorization message; after that there are no popups, ever, trades
  * execute server-side.
  */
 async function sessionFor(option: WalletOption): Promise<WalletSession | null> {

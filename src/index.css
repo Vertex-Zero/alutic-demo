@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 
 /* ─────────────────────────────────────────────────────────────
-   Alutic design system — "investing, but it feels like a game"
+   Alutic design system, "investing, but it feels like a game"
    Clean white, cash green, chunky 3D buttons, rounded cards.
    Nunito everywhere; Feather Bold for display headings.
    ───────────────────────────────────────────────────────────── */
@@ -96,7 +96,7 @@ body {
 
 ::selection { background: color-mix(in srgb, var(--color-accent) 24%, transparent); }
 
-/* Feather Bold has no italic — keep display accents upright */
+/* Feather Bold has no italic, keep display accents upright */
 .font-display, .font-display em { font-style: normal; }
 .font-display { letter-spacing: 0.2px; }
 
@@ -144,7 +144,7 @@ body {
   background: radial-gradient(closest-side, color-mix(in srgb, var(--color-accent) 14%, transparent), transparent 70%);
 }
 
-/* hero gradient — green fading to white, like a sunny start screen */
+/* hero gradient, green fading to white, like a sunny start screen */
 .hero-gradient {
   background: linear-gradient(180deg, color-mix(in srgb, var(--color-accent) 13%, #ffffff) 0%, #ffffff 62%);
 }

@@ -154,7 +154,7 @@ export function vaultAsPilot(v) {
     riskScore: 5,
     maxDrawdown: 0,
     sharpe: 0,
-    avgHold: '—',
+    avgHold: 'n/a',
     trades30d: v.trades30d,
     holdings: v.holdings,
     creator: v.creator,
@@ -261,6 +261,25 @@ export function getAccount(address) {
 export function deposit(account, amount) {
   if (!(amount > 0)) throw httpError(400, 'amount must be positive')
   account.balance += amount
+  touch()
+  return account
+}
+
+/** Debit a completed on-chain withdrawal and record it in the ledger. */
+export function recordWithdrawal(address, usd, { sol, sig }) {
+  const account = getOrCreateAccount(address)
+  account.balance = Math.max(0, account.balance - usd)
+  pushTrade(account, {
+    id: tradeId(),
+    pilotId: '',
+    ticker: 'SOL',
+    assetName: `Withdrawal to your wallet · ${sol.toFixed(4)} SOL · ${sig.slice(0, 12)}…`,
+    side: 'sell',
+    notional: usd,
+    fee: 0,
+    at: Date.now(),
+    kind: 'withdraw',
+  })
   touch()
   return account
 }
