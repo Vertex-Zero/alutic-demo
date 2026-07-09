@@ -20,7 +20,7 @@ const RANGE_POINTS = { d7: 6, d30: 22, d90: 64, all: 250 }
 const cache = new Map()
 const inflight = new Map()
 
-async function fetchDaily(symbol) {
+async function fetchYahooDaily(symbol) {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1y`
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
@@ -46,6 +46,45 @@ async function fetchDaily(symbol) {
     return { closes, timestamps }
   } finally {
     clearTimeout(timer)
+  }
+}
+
+/** Stooq's daily-history CSV: keyless, and reachable from cloud IPs that
+ *  Yahoo blocks. Prices are end-of-day, which is fine for 1y charts. */
+async function fetchStooqDaily(symbol) {
+  const id = symbol.startsWith('^') ? symbol.toLowerCase() : `${symbol.toLowerCase()}.us`
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+  try {
+    const res = await fetch(`https://stooq.com/q/d/l/?s=${id}&i=d`, {
+      signal: controller.signal,
+      headers: { 'user-agent': 'Mozilla/5.0 (alutic history)' },
+    })
+    if (!res.ok) throw new Error(`stooq ${res.status}`)
+    const rows = (await res.text()).trim().split('\n').slice(1).slice(-260)
+    const closes = []
+    const timestamps = []
+    for (const row of rows) {
+      const cols = row.split(',')
+      const close = Number(cols[4])
+      const ts = Date.parse(cols[0])
+      if (Number.isFinite(close) && close > 0 && Number.isFinite(ts)) {
+        closes.push(close)
+        timestamps.push(ts)
+      }
+    }
+    if (closes.length < 10) throw new Error('too little data')
+    return { closes, timestamps }
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+async function fetchDaily(symbol) {
+  try {
+    return await fetchYahooDaily(symbol)
+  } catch {
+    return fetchStooqDaily(symbol)
   }
 }
 

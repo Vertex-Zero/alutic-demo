@@ -4,7 +4,7 @@ import { TickerTape } from '../components/TickerTape'
 import { Reveal, SectionLabel } from '../components/Reveal'
 import { Sparkline } from '../components/Chart'
 import { Avatar, CategoryBadge, btn } from '../components/ui'
-import { pct, compact, usd } from '../lib/format'
+import { pct, usd } from '../lib/format'
 import { feeOn, useStore } from '../lib/store'
 
 const UNLOCK = [
@@ -18,7 +18,7 @@ const UNLOCK = [
 
 const STEPS = [
   ['01', 'Connect your wallet', 'One click with Phantom and you are in. Alutic runs on Solana, where nearly all tokenized-stock trading already happens, so there is nothing to bridge and nobody asking for brokerage paperwork.'],
-  ['02', 'Pick your pilots', 'Politicians, hedge-fund legends and AI models, reconstructed from public disclosures. Sort by return, risk, Sharpe or copiers.'],
+  ['02', 'Pick your pilots', 'Politicians, hedge-fund legends and AI models, reconstructed from public disclosures. Sort by return or Sharpe and compare them side by side.'],
   ['03', 'Approve the autopilot, once', 'You sign a single authorization. After that there are no popups, ever: trades execute automatically and you can revoke access anytime.'],
   ['04', 'It trades. You watch.', 'Every new filing or model rebalance executes across every copier automatically, each trade logged with its 0.25% fee, live on your dashboard.'],
 ]
@@ -153,7 +153,7 @@ export function Landing() {
                     {p.spark && p.spark.length > 1 && <Sparkline data={p.spark} width={110} height={40} />}
                   </div>
                   <div className="mt-4 border-t border-line pt-3 text-xs text-muted-2">
-                    <span className="tnum">{compact(p.copiers)}</span> copiers · <span className="tnum">{p.trades30d}</span> trades / 30D
+                    <span className="tnum">{p.trades30d}</span> trades / 30D · <span className="tnum">{p.holdings.length}</span> holdings
                   </div>
                 </Link>
               </Reveal>

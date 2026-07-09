@@ -6,14 +6,13 @@ import { Sparkline } from '../components/Chart'
 import { Avatar, CategoryBadge, VerifiedTick, btn } from '../components/ui'
 import { SectionLabel } from '../components/Reveal'
 import { useStore } from '../lib/store'
-import { compact, compactUsd, pct } from '../lib/format'
+import { pct } from '../lib/format'
 
-type Sort = 'd30' | 'd90' | 'all' | 'copiers' | 'sharpe'
+type Sort = 'd30' | 'd90' | 'all' | 'sharpe'
 const SORTS: { key: Sort; label: string }[] = [
   { key: 'd30', label: '30D return' },
   { key: 'd90', label: '90D return' },
-  { key: 'all', label: 'All-time' },
-  { key: 'copiers', label: 'Most copied' },
+  { key: 'all', label: '1Y return' },
   { key: 'sharpe', label: 'Sharpe' },
 ]
 const MAX_COMPARE = 3
@@ -36,7 +35,6 @@ export function Explore() {
         case 'd30': return b.roi.d30 - a.roi.d30
         case 'd90': return b.roi.d90 - a.roi.d90
         case 'all': return b.roi.all - a.roi.all
-        case 'copiers': return b.copiers - a.copiers
         case 'sharpe': return b.sharpe - a.sharpe
       }
     })
@@ -114,9 +112,8 @@ export function Explore() {
           <span className="flex-1">Pilot</span>
           <span className="w-20 text-right">30D</span>
           <span className="hidden w-20 text-right lg:block">90D</span>
+          <span className="hidden w-20 text-right lg:block">1Y</span>
           <span className="hidden w-20 text-right xl:block">Sharpe</span>
-          <span className="hidden w-24 text-right lg:block">Copiers</span>
-          <span className="hidden w-20 text-right xl:block">AUM</span>
           <span className="hidden w-16 2xl:block" />
           <span className="w-[120px]" />
         </div>
@@ -173,9 +170,10 @@ function Row({
       <span className="tnum hidden w-20 shrink-0 text-right text-sm lg:block" style={{ color: pilot.roi.d90 >= 0 ? 'var(--color-up)' : 'var(--color-down)' }}>
         {pct(pilot.roi.d90)}
       </span>
+      <span className="tnum hidden w-20 shrink-0 text-right text-sm lg:block" style={{ color: pilot.roi.all >= 0 ? 'var(--color-up)' : 'var(--color-down)' }}>
+        {pct(pilot.roi.all)}
+      </span>
       <span className="tnum hidden w-20 shrink-0 text-right text-sm text-fg/80 xl:block">{pilot.sharpe.toFixed(2)}</span>
-      <span className="tnum hidden w-24 shrink-0 text-right text-sm text-fg/80 lg:block">{compact(pilot.copiers)}</span>
-      <span className="tnum hidden w-20 shrink-0 text-right text-sm text-fg/80 xl:block">{compactUsd(pilot.aum)}</span>
       <span className="hidden w-16 shrink-0 2xl:block">
         {pilot.spark && pilot.spark.length > 1 && <Sparkline data={pilot.spark} width={64} height={24} />}
       </span>
@@ -241,7 +239,6 @@ function CompareTray({ pilots, onClear, onRemove }: { pilots: Pilot[]; onClear: 
                       ['1Y', (p: Pilot) => pct(p.roi.all), true],
                       ['Max drawdown', (p: Pilot) => pct(p.maxDrawdown, false), false],
                       ['Sharpe', (p: Pilot) => p.sharpe.toFixed(2), false],
-                      ['Copiers', (p: Pilot) => compact(p.copiers), false],
                     ] as const).map(([label, fn, colorize]) => (
                       <RowGroup key={label} label={label} pilots={pilots} fn={fn} colorize={colorize} />
                     ))}

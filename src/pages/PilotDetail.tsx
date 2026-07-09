@@ -4,7 +4,7 @@ import { AreaChart } from '../components/Chart'
 import { CopyPanel } from '../components/CopyPanel'
 import { Avatar, CategoryBadge, VerifiedTick, Stat } from '../components/ui'
 import { useStore } from '../lib/store'
-import { compact, compactUsd, pct, usd, shortAddr } from '../lib/format'
+import { pct, usd, shortAddr } from '../lib/format'
 import { NotFound } from './NotFound'
 
 type Range = 'd7' | 'd30' | 'd90' | 'all'
@@ -164,9 +164,7 @@ export function PilotDetail() {
           </div>
 
           {/* stats */}
-          <div className="card mt-5 grid grid-cols-2 gap-x-6 gap-y-6 rounded-2xl p-6 sm:grid-cols-4">
-            <Stat label="Copiers" value={compact(pilot.copiers)} />
-            <Stat label="AUM" value={compactUsd(pilot.aum)} />
+          <div className="card mt-5 grid grid-cols-2 gap-x-6 gap-y-6 rounded-2xl p-6 sm:grid-cols-3">
             <Stat label="Win rate" value={`${pilot.winRate}%`} />
             <Stat label="Sharpe" value={pilot.sharpe.toFixed(2)} />
             <Stat label="Max drawdown (1Y)" value={pct(pilot.maxDrawdown, false)} accent="var(--color-down)" />

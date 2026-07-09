@@ -472,9 +472,7 @@ function PositionRow({ position }: { position: Position }) {
           <Avatar pilot={pilot} size={46} />
           <div className="min-w-0">
             <div className="truncate font-display text-[15px] font-medium text-fg">{pilot.name}</div>
-            <div className="tnum text-xs text-muted">
-              {compact(pilot.copiers)} copiers · {pilot.category}
-            </div>
+            <div className="tnum text-xs text-muted">{pilot.category}</div>
           </div>
         </Link>
 
