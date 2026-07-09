@@ -6,8 +6,12 @@
  * (Render env var, or .env.local for local builds) with the project ID
  * from clarity.microsoft.com for alutic.ai.
  */
+// The alutic.ai Clarity project. Public by nature (it ships in the page
+// source); override with VITE_CLARITY_ID for other environments.
+const DEFAULT_CLARITY_ID = 'xjic3gfh88'
+
 export function initClarity() {
-  const id = import.meta.env.VITE_CLARITY_ID as string | undefined
+  const id = (import.meta.env.VITE_CLARITY_ID as string | undefined) ?? DEFAULT_CLARITY_ID
   if (!id || !import.meta.env.PROD) return
 
   const w = window as unknown as { clarity?: { q?: unknown[] } & ((...args: unknown[]) => void) }
