@@ -9,6 +9,19 @@ take the model behind subscription copy-trading apps (Autopilot, eToro), remove 
 minimum and the monthly fee by using tokenized assets onchain, and monetize with a single transparent
 **25 bps fee on every executed trade**.
 
+## Deploy on Render
+
+The repo ships with `render.yaml`: in Render choose **New + > Blueprint**, point it at this repo, and it builds
+(`npm ci && npm run gen && npm run build`) and serves everything (site + API) from one Node service with
+`/api/health` as the health check. `FEE_RECIPIENT` and `SOLANA_RPC` are set as environment variables.
+
+Two things to know before real traffic:
+- The free plan's disk is ephemeral: accounts, vaults, and the fee ledger (`server/*.json`) reset on each deploy,
+  and the treasury keypair is regenerated. Attach a persistent disk or move state to a database before taking
+  real deposits.
+- Keep `server/treasury.json` and `server/deposits.json` secret wherever they live; they hold private keys.
+  They are gitignored and never leave the server.
+
 ## Run it
 
 ```bash
