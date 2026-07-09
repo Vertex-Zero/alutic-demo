@@ -30,7 +30,7 @@ import { pilotHistory, accountHistory, realStats } from './history.js'
 import { PILOTS } from './pilots.gen.mjs'
 import { allVaults, vaultAsPilot, createVault, pilotPlatformStats, recentActivity } from './engine.js'
 import { depositAddressFor, startDepositWatcher, withdrawToWallet } from './deposits.js'
-import { resolveUniverse, venueStatus, quoteBuy } from './jupiter.js'
+import { startVenueResolver, venueStatus, quoteBuy } from './jupiter.js'
 import { startFilingsWatcher, filingFor } from './filings.js'
 
 const PORT = process.env.PORT || 8787
@@ -276,7 +276,7 @@ startPriceFeed()
 startEngine()
 startDepositWatcher()
 startFilingsWatcher()
-resolveUniverse().catch((e) => console.warn('[jupiter] resolve failed:', e.message))
+startVenueResolver()
 
 app.listen(PORT, () => {
   console.log(`[alutic] api listening on http://localhost:${PORT}`)

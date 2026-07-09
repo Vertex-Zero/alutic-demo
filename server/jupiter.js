@@ -36,7 +36,9 @@ async function jfetch(url, opts) {
   }
 }
 
-/** Find the real xStock mint for a tokenized ticker. */
+/** Find the real xStock mint for a tokenized ticker.
+ *  Returns the token, null (searched fine, no xStock exists),
+ *  or undefined (request failed, e.g. rate limited: retry later). */
 async function resolveMint(ticker) {
   try {
     const results = await jfetch(SEARCH_URL + encodeURIComponent(ticker))
@@ -52,22 +54,34 @@ async function resolveMint(ticker) {
       holderCount: hit.holderCount ?? null,
     }
   } catch {
-    return null
+    return undefined // transient (429 etc.): leave unresolved so we retry
   }
 }
 
-/** Resolve the whole universe (a few at a time, gently). */
+/** Resolve the whole universe gently, and keep retrying misses so a
+ *  rate-limited boot heals itself instead of showing zero forever. */
 export async function resolveUniverse() {
   const tickers = allTickers().filter((t) => t.endsWith('x'))
-  for (let i = 0; i < tickers.length; i += 4) {
-    await Promise.all(
-      tickers.slice(i, i + 4).map(async (t) => {
-        if (!mints.has(t)) mints.set(t, await resolveMint(t))
-      }),
-    )
+  for (const t of tickers) {
+    if (mints.has(t)) continue
+    const token = await resolveMint(t)
+    if (token !== undefined) mints.set(t, token)
+    await new Promise((r) => setTimeout(r, 700)) // stay under Jupiter's limits
   }
   const resolved = [...mints.values()].filter(Boolean).length
   console.log(`[jupiter] resolved ${resolved}/${tickers.length} xStock mints on Solana mainnet`)
+  return { resolved, total: tickers.length }
+}
+
+export function startVenueResolver() {
+  const run = () =>
+    resolveUniverse()
+      .then(({ resolved, total }) => {
+        if (mints.size < total) setTimeout(run, 10 * 60 * 1000) // finish the stragglers later
+        return resolved
+      })
+      .catch(() => setTimeout(run, 10 * 60 * 1000))
+  run()
 }
 
 export function venueStatus() {
