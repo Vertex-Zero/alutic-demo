@@ -11,6 +11,7 @@
 const DEFAULT_CLARITY_ID = 'xjic3gfh88'
 
 export function initClarity() {
+  if (import.meta.env.VITE_DEMO === '1') return // demo builds are untracked
   const id = (import.meta.env.VITE_CLARITY_ID as string | undefined) ?? DEFAULT_CLARITY_ID
   if (!id || !import.meta.env.PROD) return
 

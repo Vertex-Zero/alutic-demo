@@ -12,6 +12,9 @@ export const TRADE_FEE_BPS = 25
 export const TRADE_FEE_RATE = TRADE_FEE_BPS / 10_000
 export const feeOn = (notional: number) => notional * TRADE_FEE_RATE
 
+/** Demo build: simulated balances at real market prices, clearly labeled. */
+export const DEMO_MODE = import.meta.env.VITE_DEMO === '1'
+
 export type TradeKind = 'copy' | 'mirror' | 'exit' | 'deposit' | 'withdraw'
 
 export interface Trade {
@@ -85,6 +88,8 @@ interface StoreApi {
   closeWalletModal: () => void
   connectWith: (option: WalletOption) => Promise<boolean>
   disconnect: () => void
+  /** Demo builds only: credit simulated funds. */
+  addDemoFunds: (n: number) => void
   copy: (pilotId: string, allocation: number, opts?: { stopLoss?: number; copyMode?: Position['copyMode'] }) => void
   stop: (pilotId: string) => void
   isCopying: (pilotId: string) => boolean
@@ -245,19 +250,21 @@ function solanaProviderFor(id: string): SolanaProvider | null {
  * and falls back to the legacy injected provider.
  */
 export function detectWallets(): WalletOption[] {
+  const out: WalletOption[] = []
   const standard = standardWallets.get('phantom')
   if (standard) {
-    return [{ id: 'std:phantom', name: 'Phantom', kind: 'standard', detected: true, icon: standard.icon }]
-  }
-  return [
-    {
+    out.push({ id: 'std:phantom', name: 'Phantom', kind: 'standard', detected: true, icon: standard.icon })
+  } else {
+    out.push({
       id: 'phantom',
       name: 'Phantom',
       kind: 'solana',
       detected: !!solanaProviderFor('phantom'),
       installUrl: 'https://phantom.app/download',
-    },
-  ]
+    })
+  }
+  if (DEMO_MODE) out.push({ id: 'session', name: 'Demo account', kind: 'session', detected: true })
+  return out
 }
 
 const B58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
@@ -493,6 +500,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         addressRef.current = ''
         setAccount(null)
       },
+      addDemoFunds: (n) => apiAction('/api/deposit', { amount: n }),
       copy: (pilotId, allocation, opts) =>
         apiAction('/api/copy', { pilotId, allocation, stopLoss: opts?.stopLoss ?? 0, copyMode: opts?.copyMode }),
       stop: (pilotId) => apiAction('/api/stop', { pilotId }),

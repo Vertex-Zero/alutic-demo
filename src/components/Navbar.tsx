@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { useStore } from '../lib/store'
+import { useStore, DEMO_MODE } from '../lib/store'
 import { Logo, btn } from './ui'
 import { usd, shortAddr } from '../lib/format'
 
@@ -21,7 +21,14 @@ export function Navbar() {
       <div className="border-b-2 border-line bg-white">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8">
           <div className="flex items-center gap-9">
-            <Logo />
+            <span className="flex items-center gap-2">
+              <Logo />
+              {DEMO_MODE && (
+                <span className="rounded-full bg-gold/[0.15] px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-gold">
+                  Demo
+                </span>
+              )}
+            </span>
             <nav className="hidden items-center gap-1 md:flex">
               {LINKS.map((l) => (
                 <NavLink

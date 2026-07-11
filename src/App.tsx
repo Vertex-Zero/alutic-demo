@@ -3,6 +3,7 @@ import { Routes, Route, useLocation } from 'react-router-dom'
 import { Navbar } from './components/Navbar'
 import { Footer } from './components/Footer'
 import { WalletModal } from './components/WalletModal'
+import { DEMO_MODE } from './lib/store'
 import { Landing } from './pages/Landing'
 import { Explore } from './pages/Explore'
 import { CreateVault } from './pages/CreateVault'
@@ -25,6 +26,11 @@ export function App() {
     <div className="min-h-screen bg-paper">
       <ScrollToTop />
       <Navbar />
+      {DEMO_MODE && (
+        <div className="bg-gold/[0.12] px-4 py-1.5 text-center text-[11px] font-extrabold uppercase tracking-[1px] text-gold">
+          Demo · simulated balances and fills at real market prices · no real funds move
+        </div>
+      )}
       <main>
         <Routes>
           <Route path="/" element={<Landing />} />

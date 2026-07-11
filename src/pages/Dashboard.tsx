@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useStore, depositFromWallet, type Position, type Trade } from '../lib/store'
+import { useStore, depositFromWallet, DEMO_MODE, type Position, type Trade } from '../lib/store'
 import { AreaChart, Sparkline } from '../components/Chart'
 import { Avatar, btn } from '../components/ui'
 import { NumberTicker } from '../components/effects'
@@ -127,8 +127,8 @@ export function Dashboard() {
         </Reveal>
       </div>
 
-      {/* real on-chain deposits */}
-      <DepositCard address={address} />
+      {/* funding: simulated in demo builds, real on-chain otherwise */}
+      {DEMO_MODE ? <DemoFundsCard /> : <DepositCard address={address} />}
 
       {/* your vaults */}
       <YourVaults address={address} />
@@ -194,6 +194,27 @@ export function Dashboard() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function DemoFundsCard() {
+  const { addDemoFunds } = useStore()
+  return (
+    <div className="card mt-6 flex flex-wrap items-center gap-x-6 gap-y-3 rounded-2xl px-5 py-4">
+      <div>
+        <div className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted-2">Demo funds</div>
+        <p className="mt-1 text-sm text-muted">
+          Simulated balance. Trades fill at real market prices, but nothing here is real money.
+        </p>
+      </div>
+      <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
+        {[10_000, 50_000].map((n) => (
+          <button key={n} onClick={() => addDemoFunds(n)} className={btn('accent', 'flex-1 whitespace-nowrap px-4 py-2 text-xs sm:flex-initial')}>
+            + ${n.toLocaleString()} demo
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
