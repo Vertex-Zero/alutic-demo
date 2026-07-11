@@ -1,23 +1,18 @@
-# One-click deploy on Render: New + > Blueprint > point at this repo.
+# Public demo of Alutic: simulated balances, real market data, clearly labeled.
 services:
   - type: web
-    name: alutic
+    name: alutic-demo
     runtime: node
     plan: free
     buildCommand: npm ci && npm run gen && npm run build
     startCommand: node server/index.js
     healthCheckPath: /api/health
     envVars:
-      - key: FEE_RECIPIENT
-        value: DjAs88PBK9vmLGXVRPUUm9s3ECL4zqZWxpRKedZtAkMk
+      - key: ALUTIC_DEMO
+        value: '1'
+      - key: VITE_DEMO
+        value: '1'
       - key: SOLANA_RPC
         value: https://api.devnet.solana.com
       - key: NODE_VERSION
         value: '22'
-      - key: VITE_CLARITY_ID
-        sync: false # paste your Microsoft Clarity project ID in the Render dashboard
-    # NOTE: the free plan has an ephemeral disk, so accounts/vaults/fee ledger
-    # (server/*.json) reset on every deploy and the treasury keypair is
-    # regenerated. Before taking real deposits, attach a persistent disk
-    # (paid plan) mounted at /opt/render/project/src/server or move state
-    # to a database.

@@ -1,4 +1,12 @@
-# Alutic
+# Alutic (public demo)
+
+> This is the **demo build** of [Alutic](https://alutic.ai): balances and trades are **simulated**, filled at
+> real live market prices. No real funds move here. The production app runs at alutic.ai.
+
+Try it: run `npm install && npm run dev`, connect with the **Demo account**, add demo funds, and copy a pilot.
+The autopilot then trades for you at real prices, with every fill and fee in your ledger.
+
+---
 
 > Auto copy-trade the smart money onchain. Politicians, hedge-fund legends and AI models, mirrored to your own
 > wallet through tokenized stocks. **$0/month · $0 deposit fee · 0.25% per executed trade.**
