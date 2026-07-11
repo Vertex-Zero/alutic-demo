@@ -255,7 +255,7 @@ function DepositCard({ address }: { address: string }) {
           </div>
           <div className="tnum mt-1 break-all text-sm text-fg">{info.depositAddress}</div>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
           <div className="flex items-center gap-1.5 rounded-xl border-2 border-line bg-white px-3 py-2">
             <input
               value={amount}
@@ -265,10 +265,14 @@ function DepositCard({ address }: { address: string }) {
             />
             <span className="text-xs font-extrabold text-muted-2">SOL</span>
           </div>
-          <button onClick={() => void send()} disabled={sending} className={btn('accent', 'px-4 py-2 text-xs')}>
+          <button
+            onClick={() => void send()}
+            disabled={sending}
+            className={btn('accent', 'flex-1 whitespace-nowrap px-4 py-2 text-xs sm:flex-initial')}
+          >
             {sending ? 'Check Phantom…' : 'Deposit from Phantom'}
           </button>
-          <button onClick={copy} className={btn('secondary', 'px-4 py-2 text-xs')}>
+          <button onClick={copy} className={btn('secondary', 'whitespace-nowrap px-4 py-2 text-xs')}>
             {copied ? '✓ Copied' : 'Copy address'}
           </button>
         </div>
@@ -319,7 +323,7 @@ function WithdrawRow() {
     <div className="mt-3 border-t border-line pt-3">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted-2">Withdraw to your wallet</span>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
           <div className="flex items-center gap-1.5 rounded-xl border-2 border-line bg-white px-3 py-2">
             <span className="text-xs font-extrabold text-muted-2">$</span>
             <input
@@ -336,7 +340,11 @@ function WithdrawRow() {
           >
             Max
           </button>
-          <button onClick={() => void withdraw()} disabled={busy || !(Number(amount) > 0)} className={btn('primary', 'px-4 py-2 text-xs')}>
+          <button
+            onClick={() => void withdraw()}
+            disabled={busy || !(Number(amount) > 0)}
+            className={btn('primary', 'flex-1 whitespace-nowrap px-4 py-2 text-xs sm:flex-initial')}
+          >
             {busy ? 'Sending…' : 'Withdraw'}
           </button>
         </div>

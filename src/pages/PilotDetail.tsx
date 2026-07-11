@@ -72,9 +72,9 @@ export function PilotDetail() {
         Back to the board
       </Link>
 
-      <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_360px]">
+      <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
         {/* main column */}
-        <div>
+        <div className="min-w-0">
           {/* header */}
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex items-center gap-4">
@@ -194,7 +194,7 @@ export function PilotDetail() {
                       {t.side === 'buy' ? 'BUY' : 'SELL'}
                     </span>
                     <span className="tnum w-20 shrink-0 font-bold text-fg">{t.ticker}</span>
-                    <span className="flex-1 truncate text-fg/70">{t.assetName}</span>
+                    <span className="min-w-0 flex-1 truncate text-fg/70">{t.assetName}</span>
                     <span className="tnum shrink-0 text-fg">{usd(t.notional, { decimals: 2 })}</span>
                     <span className="tnum w-24 shrink-0 text-right text-xs text-muted-2">
                       fee {usd(t.fee, { decimals: 2 })}
@@ -226,8 +226,8 @@ export function PilotDetail() {
                 const inner = (
                   <>
                     <span className="tnum w-20 shrink-0 text-sm font-bold text-fg">{h.ticker}</span>
-                    <span className="flex flex-1 items-center gap-1.5 truncate text-sm text-fg/80">
-                      {h.name}
+                    <span className="flex min-w-0 flex-1 items-center gap-1.5 text-sm text-fg/80">
+                      <span className="truncate">{h.name}</span>
                       {symbol && (
                         <svg className="shrink-0 text-muted-2 opacity-0 transition-opacity group-hover:opacity-100" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
                           <path d="M7 17L17 7M9 7h8v8" />

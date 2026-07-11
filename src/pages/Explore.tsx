@@ -147,8 +147,8 @@ function Row({
   pilot: Pilot; rank: number; copying: boolean; checked: boolean; disabled: boolean; onToggle: () => void
 }) {
   return (
-    <div className={`group relative flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-fg/[0.02] ${checked ? 'bg-accent/[0.045]' : ''}`}>
-      <span className="tnum w-6 shrink-0 text-center text-sm text-muted-2">{rank}</span>
+    <div className={`group relative flex items-center gap-2.5 px-3 py-3.5 transition-colors hover:bg-fg/[0.02] sm:gap-4 sm:px-5 ${checked ? 'bg-accent/[0.045]' : ''}`}>
+      <span className="tnum hidden w-6 shrink-0 text-center text-sm text-muted-2 sm:block">{rank}</span>
 
       <Link to={`/pilot/${pilot.id}`} className="flex min-w-0 flex-1 items-center gap-3">
         <Avatar pilot={pilot} size={36} />
@@ -164,7 +164,7 @@ function Row({
         </span>
       </Link>
 
-      <span className="tnum w-20 shrink-0 text-right text-sm font-medium" style={{ color: pilot.roi.d30 >= 0 ? 'var(--color-up)' : 'var(--color-down)' }}>
+      <span className="tnum w-16 shrink-0 text-right text-sm font-medium sm:w-20" style={{ color: pilot.roi.d30 >= 0 ? 'var(--color-up)' : 'var(--color-down)' }}>
         {pct(pilot.roi.d30)}
       </span>
       <span className="tnum hidden w-20 shrink-0 text-right text-sm lg:block" style={{ color: pilot.roi.d90 >= 0 ? 'var(--color-up)' : 'var(--color-down)' }}>
@@ -178,12 +178,12 @@ function Row({
         {pilot.spark && pilot.spark.length > 1 && <Sparkline data={pilot.spark} width={64} height={24} />}
       </span>
 
-      <div className="flex w-[120px] shrink-0 items-center justify-end gap-2">
+      <div className="flex shrink-0 items-center justify-end gap-2 sm:w-[120px]">
         <button
           onClick={onToggle}
           disabled={disabled}
           title={checked ? 'Remove from compare' : 'Add to compare'}
-          className={`grid h-7 w-7 place-items-center rounded-md border text-xs transition-colors ${
+          className={`hidden h-7 w-7 place-items-center rounded-md border text-xs transition-colors sm:grid ${
             checked ? 'border-accent bg-accent text-paper' : 'border-line text-muted hover:border-line-2 disabled:opacity-30'
           }`}
         >
