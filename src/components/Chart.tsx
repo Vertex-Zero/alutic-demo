@@ -55,6 +55,8 @@ const fmtDateShort = (ts: number) => new Date(ts).toLocaleDateString('en-US', { 
 interface AreaChartProps extends ChartProps {
   /** Timestamps (ms) aligned with data; enables hover tooltip + date axis. */
   dates?: number[]
+  /** Tooltip unit: '%' change from window start (default), or the dollar value at the point. */
+  unit?: 'pct' | 'usd'
 }
 
 /**
@@ -70,6 +72,7 @@ export function AreaChart({
   strokeWidth = 2,
   className,
   dates,
+  unit = 'pct',
 }: AreaChartProps) {
   const id = useId().replace(/:/g, '')
   const svgRef = useRef<SVGSVGElement>(null)
@@ -127,8 +130,9 @@ export function AreaChart({
           style={{ left: `${(labelX / width) * 100}%` }}
         >
           <div className={`tnum text-sm ${hoverPct >= 0 ? 'text-[#7adb2e]' : 'text-[#ff8080]'}`}>
-            {hoverPct >= 0 ? '+' : ''}
-            {hoverPct.toFixed(2)}%
+            {unit === 'usd'
+              ? `$${data[hv].toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+              : `${hoverPct >= 0 ? '+' : ''}${hoverPct.toFixed(2)}%`}
           </div>
           <div className="text-[10px] font-bold text-white/60">{fmtDate(dates[hv])}</div>
         </div>

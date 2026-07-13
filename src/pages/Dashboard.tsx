@@ -9,7 +9,7 @@ import { usd, pct, shortAddr, num } from '../lib/format'
 import { feeOn } from '../lib/store'
 import {
   SHOWCASE_ADDRESS as ADDRESS,
-  SHOWCASE_DEPOSIT_ADDRESS as DEPOSIT_ADDRESS,
+  SHOWCASE_DEPOSIT_ADDRESS as DELEGATE_ADDRESS,
   SHOWCASE_NETWORK as NETWORK,
   SHOWCASE_BALANCE as BALANCE,
 } from '../lib/showcase'
@@ -94,19 +94,20 @@ const PORTFOLIO_VALUE = BALANCE + POSITIONS_VALUE
 // the tiles are sums of the position rows, so they always agree
 const TRADES_EXECUTED = POSITIONS.reduce((s, p) => s + p.tradeCount, 0)
 const FEES_PAID = POSITIONS.reduce((s, p) => s + p.feesAccrued, 0)
-// everything the account ever received; the books balance:
-// deposits = deployed + available + fees, gain = positions P&L - fees
-const TOTAL_DEPOSITED = DEPLOYED + BALANCE + FEES_PAID
-// the two ledger deposits split the exact total
-const FIRST_DEPOSIT = 61_980.06
+// Non-custodial: everything stays in the user's wallet. The books balance:
+// what the wallet held when the autopilot started = deployed + available +
+// fees since paid, and all-time gain = positions P&L - fees.
+const START_VALUE = DEPLOYED + BALANCE + FEES_PAID
+// trade-only session key: swaps capped at this, can never withdraw
+const AUTOPILOT_CAP = 120_000
 
 // Portfolio history in dollars: a seeded walk exponentially bridged so it
-// starts at total deposits and ends exactly at today's portfolio value.
-// Every timeframe's P&L then reconciles with the account numbers.
+// starts at the wallet's starting value and ends exactly at today's
+// portfolio value. Every timeframe's P&L reconciles with the account math.
 const SERIES = (() => {
   const raw = walk(42, DAYS, 0.0004, 0.024)
-  const bridge = Math.log(PORTFOLIO_VALUE / TOTAL_DEPOSITED / (raw[DAYS - 1] / raw[0]))
-  return raw.map((v, i) => TOTAL_DEPOSITED * (v / raw[0]) * Math.exp((bridge * i) / (DAYS - 1)))
+  const bridge = Math.log(PORTFOLIO_VALUE / START_VALUE / (raw[DAYS - 1] / raw[0]))
+  return raw.map((v, i) => START_VALUE * (v / raw[0]) * Math.exp((bridge * i) / (DAYS - 1)))
 })()
 
 interface FakeTrade {
@@ -154,9 +155,9 @@ const TRADES: FakeTrade[] = [
   trade(2_300, 'mirror', 'buy', 'KOx', 'Coca-Cola', 'Warren Buffett', 1_540.7),
   trade(95 * 1_440, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Bill Ackman', POSITIONS[2].allocation),
   trade(213 * 1_440 - 260, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Warren Buffett', POSITIONS[1].allocation),
-  trade(213 * 1_440, 'deposit', 'buy', 'USDC', 'Deposit', 'Wallet', TOTAL_DEPOSITED - FIRST_DEPOSIT),
+  trade(213 * 1_440, 'deposit', 'buy', 'USDC', 'Autopilot cap raised', 'Wallet', AUTOPILOT_CAP),
   trade(364 * 1_440 - 310, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Pelosi Tracker', POSITIONS[0].allocation),
-  trade(364 * 1_440, 'deposit', 'buy', 'USDC', 'Deposit', 'Wallet', FIRST_DEPOSIT),
+  trade(364 * 1_440, 'deposit', 'buy', 'USDC', 'Autopilot authorized · cap set', 'Wallet', 60_000),
 ]
 
 const VAULT = {
@@ -289,14 +290,14 @@ export function Dashboard() {
               </div>
             </div>
             <div className="mt-4">
-              <AreaChart data={series} dates={dates} height={150} stroke="var(--color-accent)" />
+              <AreaChart data={series} dates={dates} height={150} stroke="var(--color-accent)" unit="usd" />
             </div>
           </div>
         </Reveal>
 
         <Reveal delay={0.06}>
           <div className="grid h-full grid-cols-2 gap-px overflow-hidden rounded-2xl border border-line bg-line">
-            <Tile label="Available USDC" value={usd(BALANCE)} />
+            <Tile label="Available USDC" value={usd(BALANCE)} sub="in your wallet" />
             <Tile label="Deployed" value={usd(DEPLOYED)} />
             <Tile label="Trades executed" value={num(tradesExecuted)} sub="by your autopilot" />
             <Tile
@@ -308,8 +309,8 @@ export function Dashboard() {
         </Reveal>
       </div>
 
-      {/* funding */}
-      <DepositCard />
+      {/* autopilot authorization */}
+      <AutopilotCard />
 
       {/* your vaults */}
       <div className="mt-10">
@@ -392,31 +393,25 @@ export function Dashboard() {
   )
 }
 
-function DepositCard() {
-  const [copied, setCopied] = useState(false)
-  const [amount, setAmount] = useState('0.1')
+function AutopilotCard() {
   const [revealed, setRevealed] = useState(false)
-
-  const copy = () => {
-    void navigator.clipboard.writeText(DEPOSIT_ADDRESS).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1800)
-    })
-  }
 
   return (
     <div className="card mt-6 rounded-2xl px-5 py-4">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted-2">
-            Deposit funds · on-chain
+            Autopilot access · non-custodial
             <span className="rounded-full bg-accent/[0.1] px-2 py-0.5 text-accent">{NETWORK}</span>
           </div>
           <div className="tnum mt-1 flex items-center gap-2 break-all text-sm text-fg">
-            <span>{revealed ? DEPOSIT_ADDRESS : `${DEPOSIT_ADDRESS.slice(0, 8)}••••••••••••${DEPOSIT_ADDRESS.slice(-6)}`}</span>
+            <span className="text-muted-2">session key</span>
+            <span>
+              {revealed ? DELEGATE_ADDRESS : `${DELEGATE_ADDRESS.slice(0, 8)}••••••••••••${DELEGATE_ADDRESS.slice(-6)}`}
+            </span>
             <button
               onClick={() => setRevealed((r) => !r)}
-              aria-label={revealed ? 'Hide address' : 'Show address'}
+              aria-label={revealed ? 'Hide session key' : 'Show session key'}
               className="shrink-0 text-muted-2 transition-colors hover:text-fg"
             >
               {revealed ? (
@@ -433,66 +428,28 @@ function DepositCard() {
             </button>
           </div>
         </div>
-        <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
-          <div className="flex items-center gap-1.5 rounded-xl border-2 border-line bg-white px-3 py-2">
-            <input
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              inputMode="decimal"
-              className="tnum w-16 bg-transparent text-right text-sm text-fg focus:outline-none"
-            />
-            <span className="text-xs font-extrabold text-muted-2">SOL</span>
+        <div className="flex w-full flex-wrap items-center gap-x-5 gap-y-2 sm:ml-auto sm:w-auto">
+          <div>
+            <div className="text-[9px] font-extrabold uppercase tracking-[0.12em] text-muted-2">Trading cap</div>
+            <div className="tnum mt-0.5 text-sm text-fg">{usd(AUTOPILOT_CAP)}</div>
           </div>
-          <button className={btn('accent', 'flex-1 whitespace-nowrap px-4 py-2 text-xs sm:flex-initial')}>
-            Deposit from Phantom
-          </button>
-          <button onClick={copy} className={btn('secondary', 'whitespace-nowrap px-4 py-2 text-xs')}>
-            {copied ? '✓ Copied' : 'Copy address'}
-          </button>
+          <div>
+            <div className="text-[9px] font-extrabold uppercase tracking-[0.12em] text-muted-2">In use</div>
+            <div className="tnum mt-0.5 text-sm text-fg">{usd(DEPLOYED)}</div>
+          </div>
+          <div className="flex gap-2">
+            <button className={btn('secondary', 'whitespace-nowrap px-4 py-2 text-xs')}>Adjust cap</button>
+            <button className={btn('ghost', 'whitespace-nowrap px-4 py-2 text-xs text-down hover:bg-down/10')}>
+              Revoke access
+            </button>
+          </div>
         </div>
       </div>
       <p className="mt-3 text-xs leading-5 text-muted-2">
-        Use the button, or send SOL/USDC to the address from any wallet. Deposits credit automatically at the live
-        price within ~30 seconds, free of charge. To cash out, stop any active copies so the money is back in your
-        balance, then withdraw below.
+        Your funds never leave your wallet. The autopilot holds a trade-only session key: it can swap whitelisted
+        tokenized stocks up to your cap, and can never withdraw or transfer. Revoking takes effect immediately and
+        returns full control; re-authorize anytime with one signature.
       </p>
-      <WithdrawRow />
-    </div>
-  )
-}
-
-function WithdrawRow() {
-  const [amount, setAmount] = useState('')
-
-  return (
-    <div className="mt-3 border-t border-line pt-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted-2">Withdraw to your wallet</span>
-        <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
-          <div className="flex items-center gap-1.5 rounded-xl border-2 border-line bg-white px-3 py-2">
-            <span className="text-xs font-extrabold text-muted-2">$</span>
-            <input
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              inputMode="decimal"
-              placeholder={BALANCE.toFixed(2)}
-              className="tnum w-20 bg-transparent text-right text-sm text-fg focus:outline-none"
-            />
-          </div>
-          <button
-            onClick={() => setAmount(BALANCE.toFixed(2))}
-            className="rounded-full border border-line px-2.5 py-1 text-xs font-bold text-fg/70 hover:border-line-2"
-          >
-            Max
-          </button>
-          <button
-            disabled={!(Number(amount) > 0)}
-            className={btn('primary', 'flex-1 whitespace-nowrap px-4 py-2 text-xs sm:flex-initial')}
-          >
-            Withdraw
-          </button>
-        </div>
-      </div>
     </div>
   )
 }
