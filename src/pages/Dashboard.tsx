@@ -359,7 +359,11 @@ function DepositCard() {
             Deposit funds · on-chain
             <span className="rounded-full bg-accent/[0.1] px-2 py-0.5 text-accent">{NETWORK}</span>
           </div>
-          <div className="tnum mt-1 break-all text-sm text-fg">{DEPOSIT_ADDRESS}</div>
+          <div className="tnum mt-1 break-all text-sm text-fg">
+            {DEPOSIT_ADDRESS.slice(0, 8)}
+            <span className="select-none blur-[3px]">{DEPOSIT_ADDRESS.slice(8, -6)}</span>
+            {DEPOSIT_ADDRESS.slice(-6)}
+          </div>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
           <div className="flex items-center gap-1.5 rounded-xl border-2 border-line bg-white px-3 py-2">
