@@ -38,7 +38,6 @@ function walk(seed: number, points: number, drift: number, vol: number): number[
 }
 
 const DAYS = 365
-const SERIES = walk(42, DAYS, 0.0016, 0.024)
 const DATES = Array.from({ length: DAYS }, (_, i) => Date.now() - (DAYS - 1 - i) * 86_400_000)
 
 const RANGES = [
@@ -92,6 +91,18 @@ const POSITIONS_VALUE = POSITIONS.reduce((s, p) => s + p.value, 0)
 const PORTFOLIO_VALUE = BALANCE + POSITIONS_VALUE
 const TRADES_EXECUTED = 1_287
 const FEES_PAID = 491.83
+// everything the account ever received; the books balance:
+// deposits = deployed + available + fees, gain = positions P&L - fees
+const TOTAL_DEPOSITED = DEPLOYED + BALANCE + FEES_PAID
+
+// Portfolio history in dollars: a seeded walk exponentially bridged so it
+// starts at total deposits and ends exactly at today's portfolio value.
+// Every timeframe's P&L then reconciles with the account numbers.
+const SERIES = (() => {
+  const raw = walk(42, DAYS, 0.0004, 0.024)
+  const bridge = Math.log(PORTFOLIO_VALUE / TOTAL_DEPOSITED / (raw[DAYS - 1] / raw[0]))
+  return raw.map((v, i) => TOTAL_DEPOSITED * (v / raw[0]) * Math.exp((bridge * i) / (DAYS - 1)))
+})()
 
 interface FakeTrade {
   id: string
@@ -135,12 +146,12 @@ const TRADES: FakeTrade[] = [
   trade(540, 'mirror', 'buy', 'MSFTx', 'Microsoft', 'Pelosi Tracker', 2_480.0),
   trade(760, 'mirror', 'buy', 'HLTx', 'Hilton', 'Bill Ackman', 705.9),
   trade(1_150, 'mirror', 'sell', 'TEMx', 'Tempus AI', 'Pelosi Tracker', 980.45),
-  trade(1_620, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Bill Ackman', 18_527),
   trade(2_300, 'mirror', 'buy', 'KOx', 'Coca-Cola', 'Warren Buffett', 1_540.7),
-  trade(3_940, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Warren Buffett', 31_079),
-  trade(4_310, 'deposit', 'buy', 'USDC', 'Deposit', 'Wallet', 55_126.82),
-  trade(5_890, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Pelosi Tracker', 43_618),
-  trade(5_920, 'deposit', 'buy', 'USDC', 'Deposit', 'Wallet', 61_703.1),
+  trade(95 * 1_440, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Bill Ackman', 18_527),
+  trade(213 * 1_440 - 260, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Warren Buffett', 31_079),
+  trade(213 * 1_440, 'deposit', 'buy', 'USDC', 'Deposit', 'Wallet', 55_126.82),
+  trade(364 * 1_440 - 310, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Pelosi Tracker', 43_618),
+  trade(364 * 1_440, 'deposit', 'buy', 'USDC', 'Deposit', 'Wallet', 61_703.1),
 ]
 
 const VAULT = {
@@ -188,8 +199,8 @@ export function Dashboard() {
   const days = RANGES.find(([k]) => k === range)![1]
   const series = SERIES.slice(-days)
   const dates = DATES.slice(-days)
-  const rangePct = ((series[series.length - 1] - series[0]) / series[0]) * 100
-  const rangeAbs = (PORTFOLIO_VALUE * rangePct) / (100 + rangePct)
+  const rangeAbs = series[series.length - 1] - series[0]
+  const rangePct = (rangeAbs / series[0]) * 100
   const up = rangeAbs >= 0
 
   useEffect(() => {
