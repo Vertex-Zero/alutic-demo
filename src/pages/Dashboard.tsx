@@ -95,10 +95,12 @@ const PORTFOLIO_VALUE = BALANCE + POSITIONS_VALUE
 // the tiles are sums of the position rows, so they always agree
 const TRADES_EXECUTED = POSITIONS.reduce((s, p) => s + p.tradeCount, 0)
 const FEES_PAID = POSITIONS.reduce((s, p) => s + p.feesAccrued, 0)
-// Non-custodial: everything stays in the user's wallet. The books balance:
-// what the wallet held when the autopilot started = deployed + available +
-// fees since paid, and all-time gain = positions P&L - fees.
-const START_VALUE = DEPLOYED + BALANCE + FEES_PAID
+// The books, exactly as a user would check them:
+//   portfolio = deployed + available + P&L - fees
+// P&L is market gains before fees (pill and position rows); fees are
+// their own line and get subtracted once.
+const GROSS_PNL = POSITIONS_VALUE - DEPLOYED + FEES_PAID
+const START_VALUE = PORTFOLIO_VALUE - GROSS_PNL
 // trade-only session key: swaps capped at this, can never withdraw
 const AUTOPILOT_CAP = 120_000
 
@@ -206,15 +208,17 @@ export function Dashboard() {
   const balance = useSyncExternalStore(showcaseBalance.subscribe, showcaseBalance.get)
 
   // every figure derives from the live rows, so the books always balance:
-  // deployed + balance + feesPaid === START_VALUE at every instant
+  // portfolio = deployed + available + P&L - fees, at every instant
   const tradesExecuted = positions.reduce((s, p) => s + p.tradeCount, 0)
   const feesPaid = positions.reduce((s, p) => s + p.feesAccrued, 0)
-  const portfolioValue = balance + positions.reduce((s, p) => s + p.value, 0)
+  const positionsValue = positions.reduce((s, p) => s + p.value, 0)
+  const portfolioValue = balance + positionsValue
 
   const days = RANGES.find(([k]) => k === range)![1]
   const series = SERIES.slice(-days)
   const dates = DATES.slice(-days)
-  const rangeAbs = portfolioValue - series[0]
+  // all-time = gross market P&L (the checkable number); windows = chart move
+  const rangeAbs = range === 'All' ? positionsValue - DEPLOYED + feesPaid : portfolioValue - series[0]
   const rangePct = (rangeAbs / series[0]) * 100
   const up = rangeAbs >= 0
 
@@ -226,14 +230,15 @@ export function Dashboard() {
       const t = liveTrade()
       const fee = feeOn(t.notional)
       setTrades((prev) => [t, ...prev].slice(0, 40))
+      // the fee comes out of the position's cash sleeve, so the row
+      // identity (value = deployed + P&L - fees) keeps holding
       setPositions((prev) =>
         prev.map((p) =>
           p.pilot.name === t.pilotName
-            ? { ...p, tradeCount: p.tradeCount + 1, feesAccrued: p.feesAccrued + fee }
+            ? { ...p, value: p.value - fee, tradeCount: p.tradeCount + 1, feesAccrued: p.feesAccrued + fee }
             : p,
         ),
       )
-      showcaseBalance.spend(fee) // the wallet pays the fee
       timer = setTimeout(tick, 40_000 + Math.random() * 60_000)
     }
     timer = setTimeout(tick, 9_000 + Math.random() * 12_000)
@@ -519,7 +524,8 @@ function Tile({ label, value, sub, accent }: { label: string; value: string; sub
 
 function PositionRow({ position }: { position: FakePosition }) {
   const { pilot } = position
-  const pnlAbs = position.value - position.allocation
+  // market P&L before fees: value = deployed + P&L - fees, per row
+  const pnlAbs = position.value - position.allocation + position.feesAccrued
   const pnlPct = (pnlAbs / position.allocation) * 100
 
   return (
