@@ -12,9 +12,6 @@ export const TRADE_FEE_BPS = 25
 export const TRADE_FEE_RATE = TRADE_FEE_BPS / 10_000
 export const feeOn = (notional: number) => notional * TRADE_FEE_RATE
 
-/** Demo build: simulated balances at real market prices, clearly labeled. */
-export const DEMO_MODE = import.meta.env.VITE_DEMO === '1'
-
 export type TradeKind = 'copy' | 'mirror' | 'exit' | 'deposit' | 'withdraw'
 
 export interface Trade {
@@ -88,25 +85,12 @@ interface StoreApi {
   closeWalletModal: () => void
   connectWith: (option: WalletOption) => Promise<boolean>
   disconnect: () => void
-  /** Demo builds only: credit simulated funds. */
-  addDemoFunds: (n: number) => void
   copy: (pilotId: string, allocation: number, opts?: { stopLoss?: number; copyMode?: Position['copyMode'] }) => void
   stop: (pilotId: string) => void
   isCopying: (pilotId: string) => boolean
 }
 
 const Ctx = createContext<StoreApi | null>(null)
-
-function randomAddr(): string {
-  const hex = '0123456789abcdef'
-  let out = '0x'
-  let seed = Date.now()
-  for (let i = 0; i < 40; i++) {
-    seed = (seed * 16807) % 2147483647
-    out += hex[seed % 16]
-  }
-  return out
-}
 
 interface SolanaProvider {
   connect: () => Promise<{ publicKey?: { toString: () => string } } | boolean | void>
@@ -121,7 +105,7 @@ interface SolanaProvider {
 export interface WalletOption {
   id: string
   name: string
-  kind: 'solana' | 'standard' | 'evm' | 'session'
+  kind: 'solana' | 'standard' | 'evm'
   detected: boolean
   installUrl?: string
   icon?: string
@@ -263,7 +247,6 @@ export function detectWallets(): WalletOption[] {
       installUrl: 'https://phantom.app/download',
     })
   }
-  if (DEMO_MODE) out.push({ id: 'session', name: 'Demo account', kind: 'session', detected: true })
   return out
 }
 
@@ -295,8 +278,6 @@ interface WalletSession {
  * execute server-side.
  */
 async function sessionFor(option: WalletOption): Promise<WalletSession | null> {
-  if (option.kind === 'session') return { address: randomAddr() }
-
   if (option.kind === 'standard') {
     const wallet = standardWallets.get(option.id.slice(4))
     return wallet ? standardSession(wallet) : null
@@ -500,7 +481,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         addressRef.current = ''
         setAccount(null)
       },
-      addDemoFunds: (n) => apiAction('/api/deposit', { amount: n }),
       copy: (pilotId, allocation, opts) =>
         apiAction('/api/copy', { pilotId, allocation, stopLoss: opts?.stopLoss ?? 0, copyMode: opts?.copyMode }),
       stop: (pilotId) => apiAction('/api/stop', { pilotId }),

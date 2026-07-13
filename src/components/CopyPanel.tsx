@@ -2,14 +2,14 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import type { Pilot } from '../data/pilots'
-import { useStore, feeOn, TRADE_FEE_BPS, DEMO_MODE } from '../lib/store'
+import { useStore, feeOn, TRADE_FEE_BPS } from '../lib/store'
 import { btn } from './ui'
 import { usd } from '../lib/format'
 
 const STOP_OPTIONS = [0, 5, 10, 20, 30]
 
 export function CopyPanel({ pilot }: { pilot: Pilot }) {
-  const { connected, balance, connect, copy, isCopying, addDemoFunds } = useStore()
+  const { connected, balance, connect, copy, isCopying } = useStore()
   const [amount, setAmount] = useState(500)
   const [stopLoss, setStopLoss] = useState(10)
   const [mode, setMode] = useState<'proportional' | 'fixed'>('proportional')
@@ -123,23 +123,14 @@ export function CopyPanel({ pilot }: { pilot: Pilot }) {
             Connect wallet to copy
           </button>
         ) : balance <= 0 ? (
-          DEMO_MODE ? (
-            <div>
-              <button className={btn('accent', 'w-full py-3')} onClick={() => addDemoFunds(10_000)}>
-                Add $10,000 demo funds
-              </button>
-              <p className="mt-2 text-center text-xs text-muted-2">Simulated balance; nothing real moves.</p>
-            </div>
-          ) : (
-            <div>
-              <Link to="/dashboard" className={btn('accent', 'w-full py-3')}>
-                Deposit funds to start
-              </Link>
-              <p className="mt-2 text-center text-xs text-muted-2">
-                Send SOL or USDC from your wallet on the dashboard; it credits automatically.
-              </p>
-            </div>
-          )
+          <div>
+            <Link to="/dashboard" className={btn('accent', 'w-full py-3')}>
+              Deposit funds to start
+            </Link>
+            <p className="mt-2 text-center text-xs text-muted-2">
+              Send SOL or USDC from your wallet on the dashboard; it credits automatically.
+            </p>
+          </div>
         ) : (
           <button className={btn('accent', 'w-full py-3')} disabled={!canCopy} onClick={onCopy}>
             {copying ? `Add ${usd(amount)} to copy` : `Start autopilot · ${usd(amount)}`}

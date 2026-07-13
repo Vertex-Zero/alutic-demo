@@ -104,12 +104,9 @@ export function WalletModal() {
                   </span>
                   <span className="flex-1">
                     <span className="block text-[15px] font-extrabold text-fg">{w.name}</span>
-                    {w.kind === 'session' && (
-                      <span className="block text-xs text-muted-2">No wallet needed, start with a test balance</span>
-                    )}
                   </span>
                   <span className="rounded-full bg-accent/[0.1] px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-accent">
-                    {w.kind === 'session' ? 'Instant' : 'Available'}
+                    Available
                   </span>
                 </button>
               ))}
