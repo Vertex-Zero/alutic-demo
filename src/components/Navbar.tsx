@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { useStore } from '../lib/store'
 import { Logo } from './ui'
 import { usd, shortAddr } from '../lib/format'
-import { SHOWCASE_ADDRESS, SHOWCASE_BALANCE } from '../lib/showcase'
+import { SHOWCASE_ADDRESS, showcaseBalance } from '../lib/showcase'
 
 const LINKS = [
   { to: '/explore', label: 'Pilots' },
@@ -14,6 +14,7 @@ const LINKS = [
 
 export function Navbar() {
   const { connected, address, balance } = useStore()
+  const showcaseUsdc = useSyncExternalStore(showcaseBalance.subscribe, showcaseBalance.get)
   const [open, setOpen] = useState(false)
   const loc = useLocation()
 
@@ -45,7 +46,7 @@ export function Navbar() {
           <div className="flex items-center gap-2.5">
             <Link to="/dashboard" className="hidden items-center gap-2.5 rounded-xl border-2 border-line py-1.5 pl-3.5 pr-1.5 sm:flex">
               <span className="tnum text-sm text-fg">
-                {usd(connected ? balance : SHOWCASE_BALANCE, { decimals: 0 })}
+                {usd(connected ? balance : showcaseUsdc, { decimals: 0 })}
               </span>
               <span className="flex items-center gap-1.5 rounded-lg bg-accent/[0.1] px-2.5 py-1">
                 <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-up" />

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import { Link } from 'react-router-dom'
 import { PILOTS, type Pilot } from '../data/pilots'
 import { AreaChart, Sparkline } from '../components/Chart'
@@ -12,6 +12,7 @@ import {
   SHOWCASE_DEPOSIT_ADDRESS as DELEGATE_ADDRESS,
   SHOWCASE_NETWORK as NETWORK,
   SHOWCASE_BALANCE as BALANCE,
+  showcaseBalance,
 } from '../lib/showcase'
 
 /**
@@ -166,7 +167,9 @@ const VAULT = {
   roi30: 8.7,
   copiers: 312,
   aum: 1_240_000,
-  earnedUsd: 186.42,
+  // creator gets half of every copier trade fee; entry fees alone on
+  // $1.24M copied are 0.25% x 1.24M / 2 = $1,550, plus mirror-fee share
+  earnedUsd: 2_431.77,
 }
 
 /** Mirrored trades stream in every so often, like the live autopilot. */
@@ -183,7 +186,7 @@ const LIVE_POOL: [string, string, string][] = [
 function liveTrade(): FakeTrade {
   const [ticker, assetName, pilotName] = LIVE_POOL[Math.floor(Math.random() * LIVE_POOL.length)]
   const side = Math.random() < 0.68 ? 'buy' : 'sell'
-  const notional = Math.round((400 + Math.random() * 2_800) * 100) / 100
+  const notional = Math.round((300 + Math.random() * 900) * 100) / 100
   return {
     id: `live-${Date.now()}`,
     kind: 'mirror',
@@ -200,15 +203,18 @@ export function Dashboard() {
   const [trades, setTrades] = useState(TRADES)
   const [positions, setPositions] = useState(POSITIONS)
   const [range, setRange] = useState<RangeKey>('90D')
+  const balance = useSyncExternalStore(showcaseBalance.subscribe, showcaseBalance.get)
 
-  // the tiles stay sums of the rows, even while live trades stream in
+  // every figure derives from the live rows, so the books always balance:
+  // deployed + balance + feesPaid === START_VALUE at every instant
   const tradesExecuted = positions.reduce((s, p) => s + p.tradeCount, 0)
   const feesPaid = positions.reduce((s, p) => s + p.feesAccrued, 0)
+  const portfolioValue = balance + positions.reduce((s, p) => s + p.value, 0)
 
   const days = RANGES.find(([k]) => k === range)![1]
   const series = SERIES.slice(-days)
   const dates = DATES.slice(-days)
-  const rangeAbs = series[series.length - 1] - series[0]
+  const rangeAbs = portfolioValue - series[0]
   const rangePct = (rangeAbs / series[0]) * 100
   const up = rangeAbs >= 0
 
@@ -218,17 +224,19 @@ export function Dashboard() {
     const tick = () => {
       if (!alive) return
       const t = liveTrade()
+      const fee = feeOn(t.notional)
       setTrades((prev) => [t, ...prev].slice(0, 40))
       setPositions((prev) =>
         prev.map((p) =>
           p.pilot.name === t.pilotName
-            ? { ...p, tradeCount: p.tradeCount + 1, feesAccrued: p.feesAccrued + feeOn(t.notional) }
+            ? { ...p, tradeCount: p.tradeCount + 1, feesAccrued: p.feesAccrued + fee }
             : p,
         ),
       )
-      timer = setTimeout(tick, 14_000 + Math.random() * 26_000)
+      showcaseBalance.spend(fee) // the wallet pays the fee
+      timer = setTimeout(tick, 40_000 + Math.random() * 60_000)
     }
-    timer = setTimeout(tick, 7_000 + Math.random() * 8_000)
+    timer = setTimeout(tick, 9_000 + Math.random() * 12_000)
     return () => {
       alive = false
       clearTimeout(timer)
@@ -267,7 +275,7 @@ export function Dashboard() {
               <div>
                 <div className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted-2">Portfolio value</div>
                 <div className="tnum mt-1.5 text-4xl font-medium text-fg">
-                  <NumberTicker value={PORTFOLIO_VALUE} prefix="$" decimals={2} duration={1} />
+                  <NumberTicker value={portfolioValue} prefix="$" decimals={2} duration={1} />
                 </div>
                 <div
                   className={`tnum mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm ${up ? 'pill-up' : 'pill-down'}`}
@@ -297,7 +305,7 @@ export function Dashboard() {
 
         <Reveal delay={0.06}>
           <div className="grid h-full grid-cols-2 gap-px overflow-hidden rounded-2xl border border-line bg-line">
-            <Tile label="Available USDC" value={usd(BALANCE)} sub="in your wallet" />
+            <Tile label="Available USDC" value={usd(balance)} sub="in your wallet" />
             <Tile label="Deployed" value={usd(DEPLOYED)} />
             <Tile label="Trades executed" value={num(tradesExecuted)} sub="by your autopilot" />
             <Tile
