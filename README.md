@@ -1,10 +1,11 @@
 # Alutic (public demo)
 
-> This is the **demo build** of [Alutic](https://alutic.ai): balances and trades are **simulated**, filled at
-> real live market prices. No real funds move here. The production app runs at alutic.ai.
+> This is the **demo build** of [Alutic](https://alutic.ai): the dashboard shows a **pre-populated showcase
+> portfolio** (fake balances, positions and trades) so you can see the full funded experience without a wallet.
+> No real funds move here. The production app runs at alutic.ai.
 
-Try it: run `npm install && npm run dev`, connect with the **Demo account**, add demo funds, and copy a pilot.
-The autopilot then trades for you at real prices, with every fill and fee in your ledger.
+Try it: run `npm install && npm run dev` and open the **Dashboard** — it renders a live-looking funded account,
+with the autopilot's trades streaming into the ledger. Pilot pages and the explore leaderboard use real market data.
 
 ---
 
