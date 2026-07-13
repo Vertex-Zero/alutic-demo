@@ -82,16 +82,16 @@ function position(
 }
 
 const POSITIONS: FakePosition[] = [
-  position('pelosi', 42_000, 48_932.18, 31, 15, 7),
-  position('buffett', 30_000, 32_406.55, 12, 0, 19),
-  position('ackman', 18_000, 17_215.4, 17, 25, 53),
+  position('pelosi', 43_618, 50_812.44, 31, 15, 7),
+  position('buffett', 31_079, 33_571.22, 12, 0, 19),
+  position('ackman', 18_527, 17_804.61, 17, 25, 53),
 ]
 
 const DEPLOYED = POSITIONS.reduce((s, p) => s + p.allocation, 0)
 const POSITIONS_VALUE = POSITIONS.reduce((s, p) => s + p.value, 0)
 const PORTFOLIO_VALUE = BALANCE + POSITIONS_VALUE
-const TRADES_EXECUTED = 1_284
-const FEES_PAID = 486.15
+const TRADES_EXECUTED = 1_287
+const FEES_PAID = 491.83
 
 interface FakeTrade {
   id: string
@@ -135,12 +135,12 @@ const TRADES: FakeTrade[] = [
   trade(540, 'mirror', 'buy', 'MSFTx', 'Microsoft', 'Pelosi Tracker', 2_480.0),
   trade(760, 'mirror', 'buy', 'HLTx', 'Hilton', 'Bill Ackman', 705.9),
   trade(1_150, 'mirror', 'sell', 'TEMx', 'Tempus AI', 'Pelosi Tracker', 980.45),
-  trade(1_620, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Bill Ackman', 18_000),
+  trade(1_620, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Bill Ackman', 18_527),
   trade(2_300, 'mirror', 'buy', 'KOx', 'Coca-Cola', 'Warren Buffett', 1_540.7),
-  trade(3_940, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Warren Buffett', 30_000),
-  trade(4_310, 'deposit', 'buy', 'USDC', 'Deposit', 'Wallet', 53_000),
-  trade(5_890, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Pelosi Tracker', 42_000),
-  trade(5_920, 'deposit', 'buy', 'USDC', 'Deposit', 'Wallet', 60_000),
+  trade(3_940, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Warren Buffett', 31_079),
+  trade(4_310, 'deposit', 'buy', 'USDC', 'Deposit', 'Wallet', 55_126.82),
+  trade(5_890, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Pelosi Tracker', 43_618),
+  trade(5_920, 'deposit', 'buy', 'USDC', 'Deposit', 'Wallet', 61_703.1),
 ]
 
 const VAULT = {
@@ -250,21 +250,18 @@ export function Dashboard() {
                   {up ? '▲' : '▼'} {usd(Math.abs(rangeAbs))} ({pct(rangePct)}) · {range === 'All' ? 'all time' : `past ${range.toLowerCase()}`}
                 </div>
               </div>
-              <div className="flex flex-col items-end gap-2">
-                <div className="flex gap-1">
-                  {RANGES.map(([k]) => (
-                    <button
-                      key={k}
-                      onClick={() => setRange(k)}
-                      className={`tnum rounded-full px-2.5 py-1 text-xs font-bold transition-colors ${
-                        range === k ? 'bg-fg/[0.08] text-fg ring-1 ring-line-2' : 'text-fg/50 hover:text-fg'
-                      }`}
-                    >
-                      {k}
-                    </button>
-                  ))}
-                </div>
-                <Sparkline data={series} width={160} height={40} stroke="var(--color-accent)" strokeWidth={2} />
+              <div className="flex gap-1">
+                {RANGES.map(([k]) => (
+                  <button
+                    key={k}
+                    onClick={() => setRange(k)}
+                    className={`tnum rounded-full px-2.5 py-1 text-xs font-bold transition-colors ${
+                      range === k ? 'bg-fg/[0.08] text-fg ring-1 ring-line-2' : 'text-fg/50 hover:text-fg'
+                    }`}
+                  >
+                    {k}
+                  </button>
+                ))}
               </div>
             </div>
             <div className="mt-4">
@@ -374,6 +371,7 @@ export function Dashboard() {
 function DepositCard() {
   const [copied, setCopied] = useState(false)
   const [amount, setAmount] = useState('0.1')
+  const [revealed, setRevealed] = useState(false)
 
   const copy = () => {
     void navigator.clipboard.writeText(DEPOSIT_ADDRESS).then(() => {
@@ -390,10 +388,25 @@ function DepositCard() {
             Deposit funds · on-chain
             <span className="rounded-full bg-accent/[0.1] px-2 py-0.5 text-accent">{NETWORK}</span>
           </div>
-          <div className="tnum mt-1 break-all text-sm text-fg">
-            {DEPOSIT_ADDRESS.slice(0, 8)}
-            <span className="select-none blur-[3px]">{DEPOSIT_ADDRESS.slice(8, -6)}</span>
-            {DEPOSIT_ADDRESS.slice(-6)}
+          <div className="tnum mt-1 flex items-center gap-2 break-all text-sm text-fg">
+            <span>{revealed ? DEPOSIT_ADDRESS : `${DEPOSIT_ADDRESS.slice(0, 8)}••••••••••••${DEPOSIT_ADDRESS.slice(-6)}`}</span>
+            <button
+              onClick={() => setRevealed((r) => !r)}
+              aria-label={revealed ? 'Hide address' : 'Show address'}
+              className="shrink-0 text-muted-2 transition-colors hover:text-fg"
+            >
+              {revealed ? (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                  <path d="M1 1l22 22" />
+                </svg>
+              ) : (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              )}
+            </button>
           </div>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
