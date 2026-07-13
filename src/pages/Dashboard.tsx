@@ -37,9 +37,17 @@ function walk(seed: number, points: number, drift: number, vol: number): number[
   return out
 }
 
-const DAYS = 90
+const DAYS = 365
 const SERIES = walk(42, DAYS, 0.0016, 0.024)
 const DATES = Array.from({ length: DAYS }, (_, i) => Date.now() - (DAYS - 1 - i) * 86_400_000)
+
+const RANGES = [
+  ['7D', 7],
+  ['30D', 30],
+  ['90D', 90],
+  ['All', DAYS],
+] as const
+type RangeKey = (typeof RANGES)[number][0]
 
 interface FakePosition {
   pilot: Pilot
@@ -81,8 +89,6 @@ const POSITIONS: FakePosition[] = [
 
 const DEPLOYED = POSITIONS.reduce((s, p) => s + p.allocation, 0)
 const POSITIONS_VALUE = POSITIONS.reduce((s, p) => s + p.value, 0)
-const PNL_ABS = POSITIONS_VALUE - DEPLOYED
-const PNL_PCT = (PNL_ABS / DEPLOYED) * 100
 const PORTFOLIO_VALUE = BALANCE + POSITIONS_VALUE
 const TRADES_EXECUTED = 1_284
 const FEES_PAID = 486.15
@@ -177,6 +183,14 @@ export function Dashboard() {
   const [trades, setTrades] = useState(TRADES)
   const [tradesExecuted, setTradesExecuted] = useState(TRADES_EXECUTED)
   const [feesPaid, setFeesPaid] = useState(FEES_PAID)
+  const [range, setRange] = useState<RangeKey>('90D')
+
+  const days = RANGES.find(([k]) => k === range)![1]
+  const series = SERIES.slice(-days)
+  const dates = DATES.slice(-days)
+  const rangePct = ((series[series.length - 1] - series[0]) / series[0]) * 100
+  const rangeAbs = (PORTFOLIO_VALUE * rangePct) / (100 + rangePct)
+  const up = rangeAbs >= 0
 
   useEffect(() => {
     let alive = true
@@ -230,14 +244,31 @@ export function Dashboard() {
                 <div className="tnum mt-1.5 text-4xl font-medium text-fg">
                   <NumberTicker value={PORTFOLIO_VALUE} prefix="$" decimals={2} duration={1} />
                 </div>
-                <div className="tnum pill-up mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm">
-                  ▲ {usd(PNL_ABS)} ({pct(PNL_PCT)})
+                <div
+                  className={`tnum mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm ${up ? 'pill-up' : 'pill-down'}`}
+                >
+                  {up ? '▲' : '▼'} {usd(Math.abs(rangeAbs))} ({pct(rangePct)}) · {range === 'All' ? 'all time' : `past ${range.toLowerCase()}`}
                 </div>
               </div>
-              <Sparkline data={SERIES} width={160} height={56} stroke="var(--color-accent)" strokeWidth={2} />
+              <div className="flex flex-col items-end gap-2">
+                <div className="flex gap-1">
+                  {RANGES.map(([k]) => (
+                    <button
+                      key={k}
+                      onClick={() => setRange(k)}
+                      className={`tnum rounded-full px-2.5 py-1 text-xs font-bold transition-colors ${
+                        range === k ? 'bg-fg/[0.08] text-fg ring-1 ring-line-2' : 'text-fg/50 hover:text-fg'
+                      }`}
+                    >
+                      {k}
+                    </button>
+                  ))}
+                </div>
+                <Sparkline data={series} width={160} height={40} stroke="var(--color-accent)" strokeWidth={2} />
+              </div>
             </div>
             <div className="mt-4">
-              <AreaChart data={SERIES} dates={DATES} height={150} stroke="var(--color-accent)" />
+              <AreaChart data={series} dates={dates} height={150} stroke="var(--color-accent)" />
             </div>
           </div>
         </Reveal>
@@ -249,8 +280,8 @@ export function Dashboard() {
             <Tile label="Trades executed" value={num(tradesExecuted)} sub="by your autopilot" />
             <Tile
               label="Fees paid · 0.25%/trade"
-              value={usd(feesPaid, { decimals: 2 })}
-              accent="var(--color-accent)"
+              value={`-${usd(feesPaid, { decimals: 2 })}`}
+              accent="var(--color-down)"
             />
           </div>
         </Reveal>
