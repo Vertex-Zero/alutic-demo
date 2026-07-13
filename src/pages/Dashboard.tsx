@@ -63,7 +63,8 @@ function position(
   pilotId: string,
   allocation: number,
   value: number,
-  tradeCount: number,
+  mirrorTrades: number,
+  avgMirrorFee: number,
   stopLoss: number,
   sparkSeed: number,
 ): FakePosition {
@@ -72,8 +73,9 @@ function position(
     pilot,
     allocation,
     value,
-    tradeCount,
-    feesAccrued: feeOn(allocation) + tradeCount * 11.4,
+    // the entry copy counts as a trade, and its 0.25% fee is in the total
+    tradeCount: mirrorTrades + 1,
+    feesAccrued: feeOn(allocation) + mirrorTrades * avgMirrorFee,
     stopLoss,
     copyMode: 'proportional',
     spark: walk(sparkSeed, 30, value >= allocation ? 0.002 : -0.001, 0.03),
@@ -81,19 +83,22 @@ function position(
 }
 
 const POSITIONS: FakePosition[] = [
-  position('pelosi', 43_618, 50_812.44, 31, 15, 7),
-  position('buffett', 31_079, 33_571.22, 12, 0, 19),
-  position('ackman', 18_527, 17_804.61, 17, 25, 53),
+  position('pelosi', 43_618, 50_812.44, 133, 4.0, 15, 7),
+  position('buffett', 31_079, 33_571.22, 57, 3.2, 0, 19),
+  position('ackman', 18_527, 17_804.61, 24, 2.85, 25, 53),
 ]
 
 const DEPLOYED = POSITIONS.reduce((s, p) => s + p.allocation, 0)
 const POSITIONS_VALUE = POSITIONS.reduce((s, p) => s + p.value, 0)
 const PORTFOLIO_VALUE = BALANCE + POSITIONS_VALUE
-const TRADES_EXECUTED = 1_287
-const FEES_PAID = 491.83
+// the tiles are sums of the position rows, so they always agree
+const TRADES_EXECUTED = POSITIONS.reduce((s, p) => s + p.tradeCount, 0)
+const FEES_PAID = POSITIONS.reduce((s, p) => s + p.feesAccrued, 0)
 // everything the account ever received; the books balance:
 // deposits = deployed + available + fees, gain = positions P&L - fees
 const TOTAL_DEPOSITED = DEPLOYED + BALANCE + FEES_PAID
+// the two ledger deposits split the exact total
+const FIRST_DEPOSIT = 61_980.06
 
 // Portfolio history in dollars: a seeded walk exponentially bridged so it
 // starts at total deposits and ends exactly at today's portfolio value.
@@ -147,11 +152,11 @@ const TRADES: FakeTrade[] = [
   trade(760, 'mirror', 'buy', 'HLTx', 'Hilton', 'Bill Ackman', 705.9),
   trade(1_150, 'mirror', 'sell', 'TEMx', 'Tempus AI', 'Pelosi Tracker', 980.45),
   trade(2_300, 'mirror', 'buy', 'KOx', 'Coca-Cola', 'Warren Buffett', 1_540.7),
-  trade(95 * 1_440, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Bill Ackman', 18_527),
-  trade(213 * 1_440 - 260, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Warren Buffett', 31_079),
-  trade(213 * 1_440, 'deposit', 'buy', 'USDC', 'Deposit', 'Wallet', 55_126.82),
-  trade(364 * 1_440 - 310, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Pelosi Tracker', 43_618),
-  trade(364 * 1_440, 'deposit', 'buy', 'USDC', 'Deposit', 'Wallet', 61_703.1),
+  trade(95 * 1_440, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Bill Ackman', POSITIONS[2].allocation),
+  trade(213 * 1_440 - 260, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Warren Buffett', POSITIONS[1].allocation),
+  trade(213 * 1_440, 'deposit', 'buy', 'USDC', 'Deposit', 'Wallet', TOTAL_DEPOSITED - FIRST_DEPOSIT),
+  trade(364 * 1_440 - 310, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Pelosi Tracker', POSITIONS[0].allocation),
+  trade(364 * 1_440, 'deposit', 'buy', 'USDC', 'Deposit', 'Wallet', FIRST_DEPOSIT),
 ]
 
 const VAULT = {
@@ -192,9 +197,12 @@ function liveTrade(): FakeTrade {
 
 export function Dashboard() {
   const [trades, setTrades] = useState(TRADES)
-  const [tradesExecuted, setTradesExecuted] = useState(TRADES_EXECUTED)
-  const [feesPaid, setFeesPaid] = useState(FEES_PAID)
+  const [positions, setPositions] = useState(POSITIONS)
   const [range, setRange] = useState<RangeKey>('90D')
+
+  // the tiles stay sums of the rows, even while live trades stream in
+  const tradesExecuted = positions.reduce((s, p) => s + p.tradeCount, 0)
+  const feesPaid = positions.reduce((s, p) => s + p.feesAccrued, 0)
 
   const days = RANGES.find(([k]) => k === range)![1]
   const series = SERIES.slice(-days)
@@ -210,8 +218,13 @@ export function Dashboard() {
       if (!alive) return
       const t = liveTrade()
       setTrades((prev) => [t, ...prev].slice(0, 40))
-      setTradesExecuted((n) => n + 1)
-      setFeesPaid((f) => f + feeOn(t.notional))
+      setPositions((prev) =>
+        prev.map((p) =>
+          p.pilot.name === t.pilotName
+            ? { ...p, tradeCount: p.tradeCount + 1, feesAccrued: p.feesAccrued + feeOn(t.notional) }
+            : p,
+        ),
+      )
       timer = setTimeout(tick, 14_000 + Math.random() * 26_000)
     }
     timer = setTimeout(tick, 7_000 + Math.random() * 8_000)
@@ -343,7 +356,7 @@ export function Dashboard() {
       </Reveal>
 
       <div className="mt-5 space-y-3">
-        {POSITIONS.map((p) => (
+        {positions.map((p) => (
           <PositionRow key={p.pilot.id} position={p} />
         ))}
       </div>
