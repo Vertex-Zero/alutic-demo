@@ -83,13 +83,16 @@ function position(
   }
 }
 
+// mirror counts follow each pilot's real cadence x the position's age
+// (e.g. Pelosi ~11 trades/30d x 12 months = 133), and the average mirror
+// is ~2.5% of the position, so fees stay proportionate to turnover
 const POSITIONS: FakePosition[] = [
-  position('pelosi', 342_500, 561_847.3, 287, 32.4, 15, 7),
-  position('buffett', 265_000, 371_210.45, 124, 28.1, 0, 19),
-  position('capitol-bulls', 158_000, 243_918.6, 341, 18.75, 20, 31),
-  position('dalio', 120_000, 158_442.15, 96, 22.3, 0, 47),
-  position('ackman', 98_500, 132_861.7, 78, 24.6, 25, 53),
-  position('burry', 45_000, 38_924.85, 42, 15.2, 30, 61),
+  position('pelosi', 342_500, 561_847.3, 133, 21.4, 15, 7),
+  position('buffett', 265_000, 371_210.45, 38, 16.55, 0, 19),
+  position('capitol-bulls', 158_000, 243_918.6, 142, 9.9, 20, 31),
+  position('dalio', 120_000, 158_442.15, 80, 7.5, 0, 47),
+  position('ackman', 98_500, 132_861.7, 13, 6.15, 25, 53),
+  position('burry', 45_000, 38_924.85, 10, 2.8, 30, 61),
 ]
 
 const DEPLOYED = POSITIONS.reduce((s, p) => s + p.allocation, 0)
@@ -149,20 +152,20 @@ const trade = (
 
 const DAY = 1_440
 const TRADES: FakeTrade[] = [
-  trade(2, 'mirror', 'buy', 'NVDAx', 'Nvidia', 'Pelosi Tracker', 18_420.5),
-  trade(16, 'mirror', 'sell', 'CRMx', 'Salesforce', 'Capitol Bulls', 7_215.8),
-  trade(41, 'mirror', 'buy', 'AAPLx', 'Apple', 'Warren Buffett', 24_860.25),
-  trade(73, 'mirror', 'buy', 'LLYx', 'Eli Lilly', 'Capitol Bulls', 9_432.1),
+  trade(2, 'mirror', 'buy', 'NVDAx', 'Nvidia', 'Pelosi Tracker', 10_420.5),
+  trade(16, 'mirror', 'sell', 'CRMx', 'Salesforce', 'Capitol Bulls', 4_215.8),
+  trade(41, 'mirror', 'buy', 'AAPLx', 'Apple', 'Warren Buffett', 9_860.25),
+  trade(73, 'mirror', 'buy', 'LLYx', 'Eli Lilly', 'Capitol Bulls', 3_932.1),
   trade(118, 'mirror', 'sell', 'TEMx', 'Tempus AI', 'Pelosi Tracker', 6_118.45),
-  trade(167, 'mirror', 'buy', 'SPYx', 'S&P 500 ETF', 'Ray Dalio', 15_204.7),
-  trade(235, 'mirror', 'buy', 'CMGx', 'Chipotle', 'Bill Ackman', 11_378.9),
-  trade(310, 'mirror', 'sell', 'BABAx', 'Alibaba', 'Michael Burry', 4_206.15),
-  trade(428, 'mirror', 'buy', 'AVGOx', 'Broadcom', 'Pelosi Tracker', 21_840.6),
-  trade(610, 'mirror', 'sell', 'OXYx', 'Occidental', 'Warren Buffett', 8_914.35),
-  trade(890, 'mirror', 'buy', 'PANWx', 'Palo Alto', 'Capitol Bulls', 12_466.2),
-  trade(1_240, 'mirror', 'buy', 'HLTx', 'Hilton', 'Bill Ackman', 7_842.55),
-  trade(1_780, 'mirror', 'sell', 'NKEx', 'Nike', 'Bill Ackman', 5_126.4),
-  trade(2_400, 'mirror', 'buy', 'MSFTx', 'Microsoft', 'Pelosi Tracker', 16_910.75),
+  trade(167, 'mirror', 'buy', 'SPYx', 'S&P 500 ETF', 'Ray Dalio', 4_204.7),
+  trade(235, 'mirror', 'buy', 'CMGx', 'Chipotle', 'Bill Ackman', 3_378.9),
+  trade(310, 'mirror', 'sell', 'BABAx', 'Alibaba', 'Michael Burry', 1_206.15),
+  trade(428, 'mirror', 'buy', 'AVGOx', 'Broadcom', 'Pelosi Tracker', 11_840.6),
+  trade(610, 'mirror', 'sell', 'OXYx', 'Occidental', 'Warren Buffett', 5_914.35),
+  trade(890, 'mirror', 'buy', 'PANWx', 'Palo Alto', 'Capitol Bulls', 5_466.2),
+  trade(1_240, 'mirror', 'buy', 'HLTx', 'Hilton', 'Bill Ackman', 2_842.55),
+  trade(1_780, 'mirror', 'sell', 'NKEx', 'Nike', 'Bill Ackman', 2_126.4),
+  trade(2_400, 'mirror', 'buy', 'MSFTx', 'Microsoft', 'Pelosi Tracker', 8_910.75),
   trade(52 * DAY, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Michael Burry', POSITIONS[5].allocation),
   trade(95 * DAY, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Bill Ackman', POSITIONS[4].allocation),
   trade(171 * DAY, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Ray Dalio', POSITIONS[3].allocation),
@@ -214,7 +217,7 @@ const LIVE_POOL: [string, string, string][] = [
 function liveTrade(): FakeTrade {
   const [ticker, assetName, pilotName] = LIVE_POOL[Math.floor(Math.random() * LIVE_POOL.length)]
   const side = Math.random() < 0.68 ? 'buy' : 'sell'
-  const notional = Math.round((2_000 + Math.random() * 12_000) * 100) / 100
+  const notional = Math.round((1_500 + Math.random() * 7_500) * 100) / 100
   return {
     id: `live-${Date.now()}`,
     kind: 'mirror',
@@ -244,7 +247,8 @@ export function Dashboard() {
   const series = SERIES.slice(-days)
   const dates = DATES.slice(-days)
   // all-time = gross market P&L (the checkable number); windows = chart move
-  const rangeAbs = range === 'All' ? positionsValue - DEPLOYED + feesPaid : portfolioValue - series[0]
+  const grossPnl = positionsValue - DEPLOYED + feesPaid
+  const rangeAbs = range === 'All' ? grossPnl : portfolioValue - series[0]
   const rangePct = (rangeAbs / series[0]) * 100
   const up = rangeAbs >= 0
 
@@ -342,6 +346,7 @@ export function Dashboard() {
             <Tile
               label="Fees paid · 0.25%/trade"
               value={`-${usd(feesPaid, { decimals: 2 })}`}
+              sub={`${((feesPaid / grossPnl) * 100).toFixed(1)}% of your P&L`}
               accent="var(--color-down)"
             />
           </div>
