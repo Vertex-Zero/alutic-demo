@@ -87,11 +87,11 @@ function position(
 // (e.g. Pelosi ~11 trades/30d x 12 months = 133), and the average mirror
 // is ~2.5% of the position, so fees stay proportionate to turnover
 const POSITIONS: FakePosition[] = [
-  position('pelosi', 342_500, 561_847.3, 133, 21.4, 15, 7),
-  position('buffett', 265_000, 371_210.45, 38, 16.55, 0, 19),
-  position('capitol-bulls', 158_000, 243_918.6, 142, 9.9, 20, 31),
-  position('dalio', 120_000, 158_442.15, 80, 7.5, 0, 47),
-  position('ackman', 98_500, 132_861.7, 13, 6.15, 25, 53),
+  position('pelosi', 342_500, 531_240.85, 133, 21.4, 15, 7),
+  position('buffett', 265_000, 352_904.3, 38, 16.55, 0, 19),
+  position('capitol-bulls', 158_000, 231_467.25, 142, 9.9, 20, 31),
+  position('dalio', 120_000, 149_881.7, 80, 7.5, 0, 47),
+  position('ackman', 98_500, 124_309.55, 13, 6.15, 25, 53),
   position('burry', 45_000, 38_924.85, 10, 2.8, 30, 61),
 ]
 
