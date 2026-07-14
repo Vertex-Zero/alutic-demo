@@ -84,9 +84,12 @@ function position(
 }
 
 const POSITIONS: FakePosition[] = [
-  position('pelosi', 43_618, 50_812.44, 133, 4.0, 15, 7),
-  position('buffett', 31_079, 33_571.22, 57, 3.2, 0, 19),
-  position('ackman', 18_527, 17_804.61, 24, 2.85, 25, 53),
+  position('pelosi', 342_500, 561_847.3, 287, 32.4, 15, 7),
+  position('buffett', 265_000, 371_210.45, 124, 28.1, 0, 19),
+  position('capitol-bulls', 158_000, 243_918.6, 341, 18.75, 20, 31),
+  position('dalio', 120_000, 158_442.15, 96, 22.3, 0, 47),
+  position('ackman', 98_500, 132_861.7, 78, 24.6, 25, 53),
+  position('burry', 45_000, 38_924.85, 42, 15.2, 30, 61),
 ]
 
 const DEPLOYED = POSITIONS.reduce((s, p) => s + p.allocation, 0)
@@ -102,7 +105,7 @@ const FEES_PAID = POSITIONS.reduce((s, p) => s + p.feesAccrued, 0)
 const GROSS_PNL = POSITIONS_VALUE - DEPLOYED + FEES_PAID
 const START_VALUE = PORTFOLIO_VALUE - GROSS_PNL
 // trade-only session key: swaps capped at this, can never withdraw
-const AUTOPILOT_CAP = 120_000
+const AUTOPILOT_CAP = 1_250_000
 
 // Portfolio history in dollars: a seeded walk exponentially bridged so it
 // starts at the wallet's starting value and ends exactly at today's
@@ -144,35 +147,53 @@ const trade = (
   at: Date.now() - minsAgo * MIN,
 })
 
+const DAY = 1_440
 const TRADES: FakeTrade[] = [
-  trade(3, 'mirror', 'buy', 'NVDAx', 'Nvidia', 'Pelosi Tracker', 2_140.5),
-  trade(18, 'mirror', 'sell', 'GOOGLx', 'Alphabet', 'Pelosi Tracker', 1_310.25),
-  trade(47, 'mirror', 'buy', 'CMGx', 'Chipotle', 'Bill Ackman', 890.1),
-  trade(92, 'mirror', 'buy', 'AAPLx', 'Apple', 'Warren Buffett', 3_260.4),
-  trade(140, 'mirror', 'sell', 'NKEx', 'Nike', 'Bill Ackman', 645.8),
-  trade(210, 'mirror', 'buy', 'AVGOx', 'Broadcom', 'Pelosi Tracker', 1_775.6),
-  trade(370, 'mirror', 'sell', 'OXYx', 'Occidental', 'Warren Buffett', 1_120.35),
-  trade(540, 'mirror', 'buy', 'MSFTx', 'Microsoft', 'Pelosi Tracker', 2_480.0),
-  trade(760, 'mirror', 'buy', 'HLTx', 'Hilton', 'Bill Ackman', 705.9),
-  trade(1_150, 'mirror', 'sell', 'TEMx', 'Tempus AI', 'Pelosi Tracker', 980.45),
-  trade(2_300, 'mirror', 'buy', 'KOx', 'Coca-Cola', 'Warren Buffett', 1_540.7),
-  trade(95 * 1_440, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Bill Ackman', POSITIONS[2].allocation),
-  trade(213 * 1_440 - 260, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Warren Buffett', POSITIONS[1].allocation),
-  trade(213 * 1_440, 'deposit', 'buy', 'USDC', 'Autopilot cap raised', 'Wallet', AUTOPILOT_CAP),
-  trade(364 * 1_440 - 310, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Pelosi Tracker', POSITIONS[0].allocation),
-  trade(364 * 1_440, 'deposit', 'buy', 'USDC', 'Autopilot authorized · cap set', 'Wallet', 60_000),
+  trade(2, 'mirror', 'buy', 'NVDAx', 'Nvidia', 'Pelosi Tracker', 18_420.5),
+  trade(16, 'mirror', 'sell', 'CRMx', 'Salesforce', 'Capitol Bulls', 7_215.8),
+  trade(41, 'mirror', 'buy', 'AAPLx', 'Apple', 'Warren Buffett', 24_860.25),
+  trade(73, 'mirror', 'buy', 'LLYx', 'Eli Lilly', 'Capitol Bulls', 9_432.1),
+  trade(118, 'mirror', 'sell', 'TEMx', 'Tempus AI', 'Pelosi Tracker', 6_118.45),
+  trade(167, 'mirror', 'buy', 'SPYx', 'S&P 500 ETF', 'Ray Dalio', 15_204.7),
+  trade(235, 'mirror', 'buy', 'CMGx', 'Chipotle', 'Bill Ackman', 11_378.9),
+  trade(310, 'mirror', 'sell', 'BABAx', 'Alibaba', 'Michael Burry', 4_206.15),
+  trade(428, 'mirror', 'buy', 'AVGOx', 'Broadcom', 'Pelosi Tracker', 21_840.6),
+  trade(610, 'mirror', 'sell', 'OXYx', 'Occidental', 'Warren Buffett', 8_914.35),
+  trade(890, 'mirror', 'buy', 'PANWx', 'Palo Alto', 'Capitol Bulls', 12_466.2),
+  trade(1_240, 'mirror', 'buy', 'HLTx', 'Hilton', 'Bill Ackman', 7_842.55),
+  trade(1_780, 'mirror', 'sell', 'NKEx', 'Nike', 'Bill Ackman', 5_126.4),
+  trade(2_400, 'mirror', 'buy', 'MSFTx', 'Microsoft', 'Pelosi Tracker', 16_910.75),
+  trade(52 * DAY, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Michael Burry', POSITIONS[5].allocation),
+  trade(95 * DAY, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Bill Ackman', POSITIONS[4].allocation),
+  trade(171 * DAY, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Ray Dalio', POSITIONS[3].allocation),
+  trade(213 * DAY, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Capitol Bulls', POSITIONS[2].allocation),
+  trade(214 * DAY, 'deposit', 'buy', 'USDC', 'Autopilot cap raised', 'Wallet', AUTOPILOT_CAP),
+  trade(289 * DAY, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Warren Buffett', POSITIONS[1].allocation),
+  trade(292 * DAY, 'deposit', 'buy', 'USDC', 'Autopilot cap raised', 'Wallet', 750_000),
+  trade(364 * DAY - 310, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Pelosi Tracker', POSITIONS[0].allocation),
+  trade(364 * DAY, 'deposit', 'buy', 'USDC', 'Autopilot authorized · cap set', 'Wallet', 500_000),
 ]
 
-const VAULT = {
-  name: 'Blue Chip Momentum',
-  tagline: 'Mega-cap quality names with a momentum tilt, rebalanced weekly.',
-  roi30: 8.7,
-  copiers: 312,
-  aum: 1_240_000,
-  // creator gets half of every copier trade fee; entry fees alone on
-  // $1.24M copied are 0.25% x 1.24M / 2 = $1,550, plus mirror-fee share
-  earnedUsd: 2_431.77,
-}
+// creator gets half of every copier trade fee, so earned must be at
+// least 0.25% x copied AUM / 2 (the entry fees), plus mirror-fee share
+const VAULTS = [
+  {
+    name: 'Blue Chip Momentum',
+    tagline: 'Mega-cap quality names with a momentum tilt, rebalanced weekly.',
+    roi30: 8.7,
+    copiers: 1_204,
+    aum: 4_820_000,
+    earnedUsd: 14_682.55,
+  },
+  {
+    name: 'AI Infra Basket',
+    tagline: 'Chips, hyperscalers and the power grid behind the AI buildout.',
+    roi30: 14.2,
+    copiers: 687,
+    aum: 2_310_000,
+    earnedUsd: 8_914.2,
+  },
+]
 
 /** Mirrored trades stream in every so often, like the live autopilot. */
 const LIVE_POOL: [string, string, string][] = [
@@ -181,14 +202,19 @@ const LIVE_POOL: [string, string, string][] = [
   ['AVGOx', 'Broadcom', 'Pelosi Tracker'],
   ['AAPLx', 'Apple', 'Warren Buffett'],
   ['KOx', 'Coca-Cola', 'Warren Buffett'],
+  ['AMZNx', 'Amazon', 'Capitol Bulls'],
+  ['JPMx', 'JPMorgan', 'Capitol Bulls'],
+  ['GLDx', 'Gold Trust', 'Ray Dalio'],
+  ['EEMx', 'Emerging Mkts', 'Ray Dalio'],
   ['CMGx', 'Chipotle', 'Bill Ackman'],
   ['HLTx', 'Hilton', 'Bill Ackman'],
+  ['JDx', 'JD.com', 'Michael Burry'],
 ]
 
 function liveTrade(): FakeTrade {
   const [ticker, assetName, pilotName] = LIVE_POOL[Math.floor(Math.random() * LIVE_POOL.length)]
   const side = Math.random() < 0.68 ? 'buy' : 'sell'
-  const notional = Math.round((300 + Math.random() * 900) * 100) / 100
+  const notional = Math.round((2_000 + Math.random() * 12_000) * 100) / 100
   return {
     id: `live-${Date.now()}`,
     kind: 'mirror',
@@ -334,28 +360,30 @@ export function Dashboard() {
           </Link>
         </div>
         <div className="mt-5 grid gap-4 md:grid-cols-2">
-          <div className="card card-hover rounded-2xl p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="truncate font-display text-lg text-fg">{VAULT.name}</div>
-                <div className="mt-0.5 line-clamp-1 text-xs text-muted">{VAULT.tagline}</div>
+          {VAULTS.map((v) => (
+            <div key={v.name} className="card card-hover rounded-2xl p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="truncate font-display text-lg text-fg">{v.name}</div>
+                  <div className="mt-0.5 line-clamp-1 text-xs text-muted">{v.tagline}</div>
+                </div>
+                <span className="tnum shrink-0 text-lg" style={{ color: 'var(--color-up)' }}>
+                  {pct(v.roi30)}
+                </span>
               </div>
-              <span className="tnum shrink-0 text-lg" style={{ color: 'var(--color-up)' }}>
-                {pct(VAULT.roi30)}
-              </span>
+              <div className="mt-4 flex items-center gap-5 border-t border-line pt-3 text-xs text-muted">
+                <span>
+                  <b className="tnum text-fg">{num(v.copiers)}</b> copiers
+                </span>
+                <span>
+                  <b className="tnum text-fg">{usd(v.aum)}</b> copied
+                </span>
+                <span className="ml-auto rounded-full bg-accent/[0.1] px-2.5 py-1 font-extrabold text-accent">
+                  earned {usd(v.earnedUsd, { decimals: 2 })}
+                </span>
+              </div>
             </div>
-            <div className="mt-4 flex items-center gap-5 border-t border-line pt-3 text-xs text-muted">
-              <span>
-                <b className="tnum text-fg">{num(VAULT.copiers)}</b> copiers
-              </span>
-              <span>
-                <b className="tnum text-fg">{usd(VAULT.aum)}</b> copied
-              </span>
-              <span className="ml-auto rounded-full bg-accent/[0.1] px-2.5 py-1 font-extrabold text-accent">
-                earned {usd(VAULT.earnedUsd, { decimals: 2 })}
-              </span>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
 
