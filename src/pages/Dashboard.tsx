@@ -1,282 +1,57 @@
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PILOTS, type Pilot } from '../data/pilots'
+import { useStore, depositFromWallet, DEMO_MODE, type Position, type Trade } from '../lib/store'
 import { AreaChart, Sparkline } from '../components/Chart'
 import { Avatar, btn } from '../components/ui'
 import { NumberTicker } from '../components/effects'
 import { Reveal, SectionLabel } from '../components/Reveal'
-import { usd, pct, shortAddr, num } from '../lib/format'
-import { feeOn } from '../lib/store'
-import {
-  SHOWCASE_ADDRESS as ADDRESS,
-  SHOWCASE_DEPOSIT_ADDRESS as DELEGATE_ADDRESS,
-  SHOWCASE_NETWORK as NETWORK,
-  SHOWCASE_BALANCE as BALANCE,
-  showcaseBalance,
-} from '../lib/showcase'
-
-/**
- * Showcase dashboard. Everything on this page is generated locally so it
- * always renders a fully populated portfolio: no wallet, no backend.
- */
-
-function seeded(seed: number) {
-  return () => {
-    seed = (seed * 16807) % 2147483647
-    return seed / 2147483647
-  }
-}
-
-function walk(seed: number, points: number, drift: number, vol: number): number[] {
-  const rand = seeded(seed)
-  let v = 100
-  const out: number[] = []
-  for (let i = 0; i < points; i++) {
-    v *= 1 + drift + (rand() - 0.5) * vol
-    out.push(v)
-  }
-  return out
-}
-
-const DAYS = 365
-const DATES = Array.from({ length: DAYS }, (_, i) => Date.now() - (DAYS - 1 - i) * 86_400_000)
-
-const RANGES = [
-  ['7D', 7],
-  ['30D', 30],
-  ['90D', 90],
-  ['All', DAYS],
-] as const
-type RangeKey = (typeof RANGES)[number][0]
-
-interface FakePosition {
-  pilot: Pilot
-  allocation: number
-  value: number
-  tradeCount: number
-  feesAccrued: number
-  stopLoss: number
-  copyMode: 'proportional' | 'fixed'
-  spark: number[]
-}
-
-function position(
-  pilotId: string,
-  allocation: number,
-  value: number,
-  mirrorTrades: number,
-  avgMirrorFee: number,
-  stopLoss: number,
-  sparkSeed: number,
-): FakePosition {
-  const pilot = PILOTS.find((p) => p.id === pilotId)!
-  return {
-    pilot,
-    allocation,
-    value,
-    // the entry copy counts as a trade, and its 0.25% fee is in the total
-    tradeCount: mirrorTrades + 1,
-    feesAccrued: feeOn(allocation) + mirrorTrades * avgMirrorFee,
-    stopLoss,
-    copyMode: 'proportional',
-    spark: walk(sparkSeed, 30, value >= allocation ? 0.002 : -0.001, 0.03),
-  }
-}
-
-// mirror counts follow each pilot's real cadence x the position's age
-// (e.g. Pelosi ~11 trades/30d x 12 months = 133), and the average mirror
-// is ~2.5% of the position, so fees stay proportionate to turnover
-const POSITIONS: FakePosition[] = [
-  position('pelosi', 342_500, 531_240.85, 133, 21.4, 15, 7),
-  position('buffett', 265_000, 352_904.3, 38, 16.55, 0, 19),
-  position('capitol-bulls', 158_000, 231_467.25, 142, 9.9, 20, 31),
-  position('dalio', 120_000, 149_881.7, 80, 7.5, 0, 47),
-  position('ackman', 98_500, 124_309.55, 13, 6.15, 25, 53),
-  position('burry', 45_000, 38_924.85, 10, 2.8, 30, 61),
-]
-
-const DEPLOYED = POSITIONS.reduce((s, p) => s + p.allocation, 0)
-const POSITIONS_VALUE = POSITIONS.reduce((s, p) => s + p.value, 0)
-const PORTFOLIO_VALUE = BALANCE + POSITIONS_VALUE
-// the tiles are sums of the position rows, so they always agree
-const TRADES_EXECUTED = POSITIONS.reduce((s, p) => s + p.tradeCount, 0)
-const FEES_PAID = POSITIONS.reduce((s, p) => s + p.feesAccrued, 0)
-// The books, exactly as a user would check them:
-//   portfolio = deployed + available + P&L - fees
-// P&L is market gains before fees (pill and position rows); fees are
-// their own line and get subtracted once.
-const GROSS_PNL = POSITIONS_VALUE - DEPLOYED + FEES_PAID
-const START_VALUE = PORTFOLIO_VALUE - GROSS_PNL
-// trade-only session key: swaps capped at this, can never withdraw
-const AUTOPILOT_CAP = 1_250_000
-
-// Portfolio history in dollars: a seeded walk exponentially bridged so it
-// starts at the wallet's starting value and ends exactly at today's
-// portfolio value. Every timeframe's P&L reconciles with the account math.
-const SERIES = (() => {
-  const raw = walk(42, DAYS, 0.0004, 0.024)
-  const bridge = Math.log(PORTFOLIO_VALUE / START_VALUE / (raw[DAYS - 1] / raw[0]))
-  return raw.map((v, i) => START_VALUE * (v / raw[0]) * Math.exp((bridge * i) / (DAYS - 1)))
-})()
-
-interface FakeTrade {
-  id: string
-  kind: 'copy' | 'mirror' | 'exit' | 'deposit' | 'withdraw'
-  side: 'buy' | 'sell'
-  ticker: string
-  assetName: string
-  pilotName: string
-  notional: number
-  at: number
-}
-
-const MIN = 60_000
-const trade = (
-  minsAgo: number,
-  kind: FakeTrade['kind'],
-  side: FakeTrade['side'],
-  ticker: string,
-  assetName: string,
-  pilotName: string,
-  notional: number,
-): FakeTrade => ({
-  id: `${kind}-${ticker}-${minsAgo}`,
-  kind,
-  side,
-  ticker,
-  assetName,
-  pilotName,
-  notional,
-  at: Date.now() - minsAgo * MIN,
-})
-
-const DAY = 1_440
-const TRADES: FakeTrade[] = [
-  trade(2, 'mirror', 'buy', 'NVDAx', 'Nvidia', 'Pelosi Tracker', 10_420.5),
-  trade(16, 'mirror', 'sell', 'CRMx', 'Salesforce', 'Capitol Bulls', 4_215.8),
-  trade(41, 'mirror', 'buy', 'AAPLx', 'Apple', 'Warren Buffett', 9_860.25),
-  trade(73, 'mirror', 'buy', 'LLYx', 'Eli Lilly', 'Capitol Bulls', 3_932.1),
-  trade(118, 'mirror', 'sell', 'TEMx', 'Tempus AI', 'Pelosi Tracker', 6_118.45),
-  trade(167, 'mirror', 'buy', 'SPYx', 'S&P 500 ETF', 'Ray Dalio', 4_204.7),
-  trade(235, 'mirror', 'buy', 'CMGx', 'Chipotle', 'Bill Ackman', 3_378.9),
-  trade(310, 'mirror', 'sell', 'BABAx', 'Alibaba', 'Michael Burry', 1_206.15),
-  trade(428, 'mirror', 'buy', 'AVGOx', 'Broadcom', 'Pelosi Tracker', 11_840.6),
-  trade(610, 'mirror', 'sell', 'OXYx', 'Occidental', 'Warren Buffett', 5_914.35),
-  trade(890, 'mirror', 'buy', 'PANWx', 'Palo Alto', 'Capitol Bulls', 5_466.2),
-  trade(1_240, 'mirror', 'buy', 'HLTx', 'Hilton', 'Bill Ackman', 2_842.55),
-  trade(1_780, 'mirror', 'sell', 'NKEx', 'Nike', 'Bill Ackman', 2_126.4),
-  trade(2_400, 'mirror', 'buy', 'MSFTx', 'Microsoft', 'Pelosi Tracker', 8_910.75),
-  trade(52 * DAY, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Michael Burry', POSITIONS[5].allocation),
-  trade(95 * DAY, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Bill Ackman', POSITIONS[4].allocation),
-  trade(171 * DAY, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Ray Dalio', POSITIONS[3].allocation),
-  trade(213 * DAY, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Capitol Bulls', POSITIONS[2].allocation),
-  trade(214 * DAY, 'deposit', 'buy', 'USDC', 'Autopilot cap raised', 'Wallet', AUTOPILOT_CAP),
-  trade(289 * DAY, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Warren Buffett', POSITIONS[1].allocation),
-  trade(292 * DAY, 'deposit', 'buy', 'USDC', 'Autopilot cap raised', 'Wallet', 750_000),
-  trade(364 * DAY - 310, 'copy', 'buy', 'PORTx', 'Portfolio basket', 'Pelosi Tracker', POSITIONS[0].allocation),
-  trade(364 * DAY, 'deposit', 'buy', 'USDC', 'Autopilot authorized · cap set', 'Wallet', 500_000),
-]
-
-// creator gets half of every copier trade fee, so earned must be at
-// least 0.25% x copied AUM / 2 (the entry fees), plus mirror-fee share
-const VAULTS = [
-  {
-    name: 'Blue Chip Momentum',
-    tagline: 'Mega-cap quality names with a momentum tilt, rebalanced weekly.',
-    roi30: 8.7,
-    copiers: 1_204,
-    aum: 4_820_000,
-    earnedUsd: 14_682.55,
-  },
-  {
-    name: 'AI Infra Basket',
-    tagline: 'Chips, hyperscalers and the power grid behind the AI buildout.',
-    roi30: 14.2,
-    copiers: 687,
-    aum: 2_310_000,
-    earnedUsd: 8_914.2,
-  },
-]
-
-/** Mirrored trades stream in every so often, like the live autopilot. */
-const LIVE_POOL: [string, string, string][] = [
-  ['NVDAx', 'Nvidia', 'Pelosi Tracker'],
-  ['MSFTx', 'Microsoft', 'Pelosi Tracker'],
-  ['AVGOx', 'Broadcom', 'Pelosi Tracker'],
-  ['AAPLx', 'Apple', 'Warren Buffett'],
-  ['KOx', 'Coca-Cola', 'Warren Buffett'],
-  ['AMZNx', 'Amazon', 'Capitol Bulls'],
-  ['JPMx', 'JPMorgan', 'Capitol Bulls'],
-  ['GLDx', 'Gold Trust', 'Ray Dalio'],
-  ['EEMx', 'Emerging Mkts', 'Ray Dalio'],
-  ['CMGx', 'Chipotle', 'Bill Ackman'],
-  ['HLTx', 'Hilton', 'Bill Ackman'],
-  ['JDx', 'JD.com', 'Michael Burry'],
-]
-
-function liveTrade(): FakeTrade {
-  const [ticker, assetName, pilotName] = LIVE_POOL[Math.floor(Math.random() * LIVE_POOL.length)]
-  const side = Math.random() < 0.68 ? 'buy' : 'sell'
-  const notional = Math.round((1_500 + Math.random() * 7_500) * 100) / 100
-  return {
-    id: `live-${Date.now()}`,
-    kind: 'mirror',
-    side,
-    ticker,
-    assetName,
-    pilotName,
-    notional,
-    at: Date.now(),
-  }
-}
+import { usd, pct, shortAddr, compact, num } from '../lib/format'
 
 export function Dashboard() {
-  const [trades, setTrades] = useState(TRADES)
-  const [positions, setPositions] = useState(POSITIONS)
-  const [range, setRange] = useState<RangeKey>('90D')
-  const balance = useSyncExternalStore(showcaseBalance.subscribe, showcaseBalance.get)
+  const store = useStore()
+  const { connected, address, authorized, balance, positions, deployed, portfolioValue, totalPnl, trades, feesPaid, tradesExecuted } = store
+  const [hist, setHist] = useState<{ series: number[]; dates?: number[] }>({ series: [] })
 
-  // every figure derives from the live rows, so the books always balance:
-  // portfolio = deployed + available + P&L - fees, at every instant
-  const tradesExecuted = positions.reduce((s, p) => s + p.tradeCount, 0)
-  const feesPaid = positions.reduce((s, p) => s + p.feesAccrued, 0)
-  const positionsValue = positions.reduce((s, p) => s + p.value, 0)
-  const portfolioValue = balance + positionsValue
-
-  const days = RANGES.find(([k]) => k === range)![1]
-  const series = SERIES.slice(-days)
-  const dates = DATES.slice(-days)
-  // all-time = gross market P&L (the checkable number); windows = chart move
-  const grossPnl = positionsValue - DEPLOYED + feesPaid
-  const rangeAbs = range === 'All' ? grossPnl : portfolioValue - series[0]
-  const rangePct = (rangeAbs / series[0]) * 100
-  const up = rangeAbs >= 0
-
+  // real portfolio chart: composite of the positions' actual price history
   useEffect(() => {
-    let alive = true
-    let timer: ReturnType<typeof setTimeout>
-    const tick = () => {
-      if (!alive) return
-      const t = liveTrade()
-      const fee = feeOn(t.notional)
-      setTrades((prev) => [t, ...prev].slice(0, 40))
-      // the fee comes out of the position's cash sleeve, so the row
-      // identity (value = deployed + P&L - fees) keeps holding
-      setPositions((prev) =>
-        prev.map((p) =>
-          p.pilot.name === t.pilotName
-            ? { ...p, value: p.value - fee, tradeCount: p.tradeCount + 1, feesAccrued: p.feesAccrued + fee }
-            : p,
-        ),
-      )
-      timer = setTimeout(tick, 40_000 + Math.random() * 60_000)
+    if (!connected || positions.length === 0) {
+      setHist({ series: [] })
+      return
     }
-    timer = setTimeout(tick, 9_000 + Math.random() * 12_000)
+    let alive = true
+    fetch(`/api/history?address=${address}&range=d90`)
+      .then((r) => r.json())
+      .then((h) => {
+        if (alive && Array.isArray(h.series) && h.series.length > 1) setHist(h)
+      })
+      .catch(() => {})
     return () => {
       alive = false
-      clearTimeout(timer)
     }
-  }, [])
+  }, [connected, address, positions.length])
+
+  if (!connected) {
+    return (
+      <div className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center px-5 text-center">
+        <div className="liquid-glass grid h-16 w-16 place-items-center rounded-2xl">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" strokeWidth="1.8">
+            <rect x="2" y="6" width="20" height="13" rx="3" />
+            <path d="M16 12h2M2 10h20" />
+          </svg>
+        </div>
+        <h1 className="mt-6 font-display text-3xl font-medium">Connect your wallet</h1>
+        <p className="mt-3 text-muted">
+          Connect a wallet to open your dashboard, put your autopilot on a pilot, and watch it trade.
+        </p>
+        <button className={btn('primary', 'mt-7 px-6 py-3')} onClick={store.connect}>
+          Connect wallet
+        </button>
+      </div>
+    )
+  }
+
+  // the portfolio chart only ever shows real market history
+  const agg = hist.series
 
   return (
     <div className="mx-auto max-w-7xl px-5 py-10 sm:px-8">
@@ -289,14 +64,18 @@ export function Dashboard() {
             </h1>
             <p className="tnum mt-2 flex flex-wrap items-center gap-2 text-sm text-muted">
               <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-up" />
-              {shortAddr(ADDRESS)} · connected
-              <span className="rounded-full bg-accent/[0.1] px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-accent">
-                ✓ Autopilot authorized · no signatures needed
-              </span>
+              {shortAddr(address)} · connected
+              {authorized && (
+                <span className="rounded-full bg-accent/[0.1] px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-accent">
+                  ✓ Autopilot authorized · no signatures needed
+                </span>
+              )}
             </p>
           </div>
           <div className="flex gap-2">
-            <button className={btn('ghost', 'px-4 py-2.5')}>Disconnect</button>
+            <button className={btn('ghost', 'px-4 py-2.5')} onClick={store.disconnect}>
+              Disconnect
+            </button>
           </div>
         </div>
       </Reveal>
@@ -313,84 +92,46 @@ export function Dashboard() {
                   <NumberTicker value={portfolioValue} prefix="$" decimals={2} duration={1} />
                 </div>
                 <div
-                  className={`tnum mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm ${up ? 'pill-up' : 'pill-down'}`}
+                  className={`tnum mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm ${
+                    totalPnl.abs >= 0 ? 'pill-up' : 'pill-down'
+                  }`}
                 >
-                  {up ? '▲' : '▼'} {usd(Math.abs(rangeAbs))} ({pct(rangePct)}) · {range === 'All' ? 'all time' : `past ${range.toLowerCase()}`}
+                  {totalPnl.abs >= 0 ? '▲' : '▼'} {usd(Math.abs(totalPnl.abs))} ({pct(totalPnl.pct)})
                 </div>
               </div>
-              <div className="flex gap-1">
-                {RANGES.map(([k]) => (
-                  <button
-                    key={k}
-                    onClick={() => setRange(k)}
-                    className={`tnum rounded-full px-2.5 py-1 text-xs font-bold transition-colors ${
-                      range === k ? 'bg-fg/[0.08] text-fg ring-1 ring-line-2' : 'text-fg/50 hover:text-fg'
-                    }`}
-                  >
-                    {k}
-                  </button>
-                ))}
+              {agg.length > 1 && <Sparkline data={agg} width={160} height={56} stroke="var(--color-accent)" strokeWidth={2} />}
+            </div>
+            {agg.length > 1 && (
+              <div className="mt-4">
+                <AreaChart data={agg} dates={hist.dates} height={150} stroke="var(--color-accent)" />
               </div>
-            </div>
-            <div className="mt-4">
-              <AreaChart data={series} dates={dates} height={150} stroke="var(--color-accent)" unit="usd" />
-            </div>
+            )}
           </div>
         </Reveal>
 
         <Reveal delay={0.06}>
           <div className="grid h-full grid-cols-2 gap-px overflow-hidden rounded-2xl border border-line bg-line">
-            <Tile label="Available USDC" value={usd(balance)} sub="in your wallet" />
-            <Tile label="Deployed" value={usd(DEPLOYED)} />
-            <Tile label="Trades executed" value={num(tradesExecuted)} sub="by your autopilot" />
+            <Tile label="Available USDC" value={usd(balance)} />
+            <Tile label="Deployed" value={usd(deployed)} />
+            <Tile
+              label="Trades executed"
+              value={num(tradesExecuted)}
+              sub="by your autopilot"
+            />
             <Tile
               label="Fees paid · 0.25%/trade"
-              value={`-${usd(feesPaid, { decimals: 2 })}`}
-              sub={`${((feesPaid / grossPnl) * 100).toFixed(1)}% of your P&L`}
-              accent="var(--color-down)"
+              value={usd(feesPaid, { decimals: 2 })}
+              accent="var(--color-accent)"
             />
           </div>
         </Reveal>
       </div>
 
-      {/* autopilot authorization */}
-      <AutopilotCard />
+      {/* funding: simulated in demo builds, real on-chain otherwise */}
+      {DEMO_MODE ? <DemoFundsCard /> : <DepositCard address={address} />}
 
       {/* your vaults */}
-      <div className="mt-10">
-        <div className="flex items-center justify-between">
-          <h2 className="font-display text-xl font-medium">Your vaults</h2>
-          <Link to="/create" className={btn('accent', 'px-4 py-2')}>
-            + Create a vault
-          </Link>
-        </div>
-        <div className="mt-5 grid gap-4 md:grid-cols-2">
-          {VAULTS.map((v) => (
-            <div key={v.name} className="card card-hover rounded-2xl p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="truncate font-display text-lg text-fg">{v.name}</div>
-                  <div className="mt-0.5 line-clamp-1 text-xs text-muted">{v.tagline}</div>
-                </div>
-                <span className="tnum shrink-0 text-lg" style={{ color: 'var(--color-up)' }}>
-                  {pct(v.roi30)}
-                </span>
-              </div>
-              <div className="mt-4 flex items-center gap-5 border-t border-line pt-3 text-xs text-muted">
-                <span>
-                  <b className="tnum text-fg">{num(v.copiers)}</b> copiers
-                </span>
-                <span>
-                  <b className="tnum text-fg">{usd(v.aum)}</b> copied
-                </span>
-                <span className="ml-auto rounded-full bg-accent/[0.1] px-2.5 py-1 font-extrabold text-accent">
-                  earned {usd(v.earnedUsd, { decimals: 2 })}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      <YourVaults address={address} />
 
       {/* positions */}
       <Reveal className="mt-10">
@@ -402,11 +143,23 @@ export function Dashboard() {
         </div>
       </Reveal>
 
-      <div className="mt-5 space-y-3">
-        {positions.map((p) => (
-          <PositionRow key={p.pilot.id} position={p} />
-        ))}
-      </div>
+      {positions.length === 0 ? (
+        <div className="card mt-5 rounded-2xl p-12 text-center">
+          <p className="text-muted">You aren't copying any pilots yet.</p>
+          {balance <= 0 && (
+            <p className="mt-1 text-sm text-muted-2">Deposit USDC, then copy a pilot. Trades will start appearing below.</p>
+          )}
+          <Link to="/explore" className={btn('primary', 'mt-5 px-5 py-2.5')}>
+            Explore pilots
+          </Link>
+        </div>
+      ) : (
+        <div className="mt-5 space-y-3">
+          {positions.map((p) => (
+            <PositionRow key={p.pilotId} position={p} />
+          ))}
+        </div>
+      )}
 
       {/* live trade ledger */}
       <Reveal className="mt-10">
@@ -419,88 +172,266 @@ export function Dashboard() {
         </div>
       </Reveal>
 
-      <div className="card mt-5 overflow-hidden rounded-2xl">
-        <div className="hidden items-center gap-4 border-b border-line px-5 py-3 text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-2 sm:flex">
-          <span className="w-16">Type</span>
-          <span className="w-12">Side</span>
-          <span className="w-20">Asset</span>
-          <span className="flex-1">Pilot</span>
-          <span className="w-24 text-right">Notional</span>
-          <span className="w-20 text-right">Fee</span>
-          <span className="w-20 text-right">When</span>
+      {trades.length === 0 ? (
+        <div className="card mt-5 rounded-2xl p-10 text-center text-sm text-muted">
+          No trades yet. Copy a pilot and your autopilot's executions will stream in here.
         </div>
-        <div className="max-h-[480px] divide-y divide-line overflow-y-auto">
-          {trades.map((t) => (
-            <TradeRow key={t.id} trade={t} />
-          ))}
+      ) : (
+        <div className="card mt-5 overflow-hidden rounded-2xl">
+          <div className="hidden items-center gap-4 border-b border-line px-5 py-3 text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-2 sm:flex">
+            <span className="w-16">Type</span>
+            <span className="w-12">Side</span>
+            <span className="w-20">Asset</span>
+            <span className="flex-1">Pilot</span>
+            <span className="w-24 text-right">Notional</span>
+            <span className="w-20 text-right">Fee</span>
+            <span className="w-20 text-right">When</span>
+          </div>
+          <div className="max-h-[480px] divide-y divide-line overflow-y-auto">
+            {trades.map((t) => (
+              <TradeRow key={t.id} trade={t} />
+            ))}
+          </div>
         </div>
+      )}
+    </div>
+  )
+}
+
+function DemoFundsCard() {
+  const { addDemoFunds } = useStore()
+  return (
+    <div className="card mt-6 flex flex-wrap items-center gap-x-6 gap-y-3 rounded-2xl px-5 py-4">
+      <div>
+        <div className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted-2">Demo funds</div>
+        <p className="mt-1 text-sm text-muted">
+          Simulated balance. Trades fill at real market prices, but nothing here is real money.
+        </p>
+      </div>
+      <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
+        {[10_000, 50_000].map((n) => (
+          <button key={n} onClick={() => addDemoFunds(n)} className={btn('accent', 'flex-1 whitespace-nowrap px-4 py-2 text-xs sm:flex-initial')}>
+            + ${n.toLocaleString()} demo
+          </button>
+        ))}
       </div>
     </div>
   )
 }
 
-function AutopilotCard() {
-  const [revealed, setRevealed] = useState(false)
+function DepositCard({ address }: { address: string }) {
+  const [info, setInfo] = useState<{ depositAddress: string; network: string; rpc: string } | null>(null)
+  const [copied, setCopied] = useState(false)
+  const [amount, setAmount] = useState('0.1')
+  const [sending, setSending] = useState(false)
+  const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null)
+
+  useEffect(() => {
+    if (!address) return
+    fetch(`/api/deposit-address?address=${address}`)
+      .then((r) => r.json())
+      .then((d) => d.depositAddress && setInfo(d))
+      .catch(() => {})
+  }, [address])
+
+  if (!info) return null
+
+  const copy = () => {
+    void navigator.clipboard.writeText(info.depositAddress).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1800)
+    })
+  }
+
+  const send = async () => {
+    const sol = Number(amount)
+    if (!(sol > 0)) return
+    setSending(true)
+    setStatus(null)
+    try {
+      const sig = await depositFromWallet(info.depositAddress, sol, info.rpc)
+      setStatus({ ok: true, msg: `Sent ${sol} SOL. It will credit within ~30 seconds. Signature ${sig.slice(0, 16)}…` })
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'transfer failed'
+      setStatus({
+        ok: false,
+        msg:
+          info.network === 'devnet'
+            ? `${msg}, note: the app is on devnet right now, so your wallet needs devnet SOL (Phantom: Settings > Developer Settings > Testnet Mode, then use a faucet).`
+            : msg,
+      })
+    }
+    setSending(false)
+  }
 
   return (
     <div className="card mt-6 rounded-2xl px-5 py-4">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted-2">
-            Autopilot access · non-custodial
-            <span className="rounded-full bg-accent/[0.1] px-2 py-0.5 text-accent">{NETWORK}</span>
-          </div>
-          <div className="tnum mt-1 flex items-center gap-2 break-all text-sm text-fg">
-            <span className="text-muted-2">session key</span>
-            <span>
-              {revealed ? DELEGATE_ADDRESS : `${DELEGATE_ADDRESS.slice(0, 8)}••••••••••••${DELEGATE_ADDRESS.slice(-6)}`}
+            Deposit funds · on-chain
+            <span className={`rounded-full px-2 py-0.5 ${info.network === 'mainnet' ? 'bg-accent/[0.1] text-accent' : 'bg-gold/[0.1] text-gold'}`}>
+              {info.network}
             </span>
-            <button
-              onClick={() => setRevealed((r) => !r)}
-              aria-label={revealed ? 'Hide session key' : 'Show session key'}
-              className="shrink-0 text-muted-2 transition-colors hover:text-fg"
-            >
-              {revealed ? (
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                  <path d="M1 1l22 22" />
-                </svg>
-              ) : (
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-              )}
-            </button>
           </div>
+          <div className="tnum mt-1 break-all text-sm text-fg">{info.depositAddress}</div>
         </div>
-        <div className="flex w-full flex-wrap items-center gap-x-5 gap-y-2 sm:ml-auto sm:w-auto">
-          <div>
-            <div className="text-[9px] font-extrabold uppercase tracking-[0.12em] text-muted-2">Trading cap</div>
-            <div className="tnum mt-0.5 text-sm text-fg">{usd(AUTOPILOT_CAP)}</div>
+        <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
+          <div className="flex items-center gap-1.5 rounded-xl border-2 border-line bg-white px-3 py-2">
+            <input
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              inputMode="decimal"
+              className="tnum w-16 bg-transparent text-right text-sm text-fg focus:outline-none"
+            />
+            <span className="text-xs font-extrabold text-muted-2">SOL</span>
           </div>
-          <div>
-            <div className="text-[9px] font-extrabold uppercase tracking-[0.12em] text-muted-2">In use</div>
-            <div className="tnum mt-0.5 text-sm text-fg">{usd(DEPLOYED)}</div>
-          </div>
-          <div className="flex gap-2">
-            <button className={btn('secondary', 'whitespace-nowrap px-4 py-2 text-xs')}>Adjust cap</button>
-            <button className={btn('ghost', 'whitespace-nowrap px-4 py-2 text-xs text-down hover:bg-down/10')}>
-              Revoke access
-            </button>
-          </div>
+          <button
+            onClick={() => void send()}
+            disabled={sending}
+            className={btn('accent', 'flex-1 whitespace-nowrap px-4 py-2 text-xs sm:flex-initial')}
+          >
+            {sending ? 'Check Phantom…' : 'Deposit from Phantom'}
+          </button>
+          <button onClick={copy} className={btn('secondary', 'whitespace-nowrap px-4 py-2 text-xs')}>
+            {copied ? '✓ Copied' : 'Copy address'}
+          </button>
         </div>
       </div>
+      {status && (
+        <p className={`mt-3 rounded-lg px-3 py-2 text-xs font-bold ${status.ok ? 'bg-accent/[0.08] text-accent' : 'bg-down/[0.08] text-down'}`}>
+          {status.msg}
+        </p>
+      )}
       <p className="mt-3 text-xs leading-5 text-muted-2">
-        Your funds never leave your wallet. The autopilot holds a trade-only session key: it can swap whitelisted
-        tokenized stocks up to your cap, and can never withdraw or transfer. Revoking takes effect immediately and
-        returns full control; re-authorize anytime with one signature.
+        Use the button, or send SOL/USDC to the address from any wallet. Deposits credit automatically at the live
+        price within ~30 seconds, free of charge. To cash out, stop any active copies so the money is back in your
+        balance, then withdraw below.
       </p>
+      <WithdrawRow />
     </div>
   )
 }
 
-const KIND_STYLE: Record<FakeTrade['kind'], [string, string]> = {
+function WithdrawRow() {
+  const { address, balance } = useStore()
+  const [amount, setAmount] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null)
+
+  const withdraw = async () => {
+    const usd = Number(amount)
+    if (!(usd > 0)) return
+    setBusy(true)
+    setStatus(null)
+    try {
+      const res = await fetch('/api/withdraw', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ address, amount: usd }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'withdrawal failed')
+      setStatus({ ok: true, msg: `Sent ${json.sol.toFixed(4)} SOL to your wallet. Signature ${json.sig.slice(0, 16)}…` })
+      setAmount('')
+    } catch (e) {
+      setStatus({ ok: false, msg: e instanceof Error ? e.message : 'withdrawal failed' })
+    }
+    setBusy(false)
+  }
+
+  return (
+    <div className="mt-3 border-t border-line pt-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted-2">Withdraw to your wallet</span>
+        <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
+          <div className="flex items-center gap-1.5 rounded-xl border-2 border-line bg-white px-3 py-2">
+            <span className="text-xs font-extrabold text-muted-2">$</span>
+            <input
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              inputMode="decimal"
+              placeholder={balance > 0 ? balance.toFixed(2) : '0.00'}
+              className="tnum w-20 bg-transparent text-right text-sm text-fg focus:outline-none"
+            />
+          </div>
+          <button
+            onClick={() => setAmount(balance.toFixed(2))}
+            className="rounded-full border border-line px-2.5 py-1 text-xs font-bold text-fg/70 hover:border-line-2"
+          >
+            Max
+          </button>
+          <button
+            onClick={() => void withdraw()}
+            disabled={busy || !(Number(amount) > 0)}
+            className={btn('primary', 'flex-1 whitespace-nowrap px-4 py-2 text-xs sm:flex-initial')}
+          >
+            {busy ? 'Sending…' : 'Withdraw'}
+          </button>
+        </div>
+      </div>
+      {status && (
+        <p className={`mt-2 rounded-lg px-3 py-2 text-xs font-bold ${status.ok ? 'bg-accent/[0.08] text-accent' : 'bg-down/[0.08] text-down'}`}>
+          {status.msg}
+        </p>
+      )}
+    </div>
+  )
+}
+
+function YourVaults({ address }: { address: string }) {
+  const { pilots } = useStore()
+  const mine = pilots.filter((p) => p.category === 'Community' && p.creator === address)
+
+  return (
+    <div className="mt-10">
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-xl font-medium">Your vaults</h2>
+        <Link to="/create" className={btn('accent', 'px-4 py-2')}>
+          + Create a vault
+        </Link>
+      </div>
+      {mine.length === 0 ? (
+        <div className="card mt-5 rounded-2xl p-8 text-center text-sm text-muted">
+          Build your own portfolio and earn <b className="text-accent">half of every trade fee</b> when people copy
+          it. No cost to create.
+        </div>
+      ) : (
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          {mine.map((v) => (
+            <Link key={v.id} to={`/pilot/${v.id}`} className="card card-hover block rounded-2xl p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="truncate font-display text-lg text-fg">{v.name}</div>
+                  <div className="mt-0.5 line-clamp-1 text-xs text-muted">{v.tagline}</div>
+                </div>
+                <span
+                  className="tnum shrink-0 text-lg"
+                  style={{ color: v.roi.d30 >= 0 ? 'var(--color-up)' : 'var(--color-down)' }}
+                >
+                  {pct(v.roi.d30)}
+                </span>
+              </div>
+              <div className="mt-4 flex items-center gap-5 border-t border-line pt-3 text-xs text-muted">
+                <span>
+                  <b className="tnum text-fg">{num(v.copiers)}</b> copiers
+                </span>
+                <span>
+                  <b className="tnum text-fg">{usd(v.aum)}</b> copied
+                </span>
+                <span className="ml-auto rounded-full bg-accent/[0.1] px-2.5 py-1 font-extrabold text-accent">
+                  earned {usd(v.earningsUsd ?? 0, { decimals: 2 })}
+                </span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const KIND_STYLE: Record<Trade['kind'], [string, string]> = {
   copy: ['COPY', 'text-accent bg-accent/[0.08] border-accent/25'],
   mirror: ['AUTO', 'text-blue bg-blue/[0.08] border-blue/25'],
   exit: ['EXIT', 'text-down bg-down/[0.07] border-down/25'],
@@ -508,13 +439,14 @@ const KIND_STYLE: Record<FakeTrade['kind'], [string, string]> = {
   withdraw: ['OUT', 'text-navy bg-navy/[0.06] border-navy/20'],
 }
 
-function TradeRow({ trade }: { trade: FakeTrade }) {
+function TradeRow({ trade }: { trade: Trade }) {
+  const { getPilot } = useStore()
+  const pilot = getPilot(trade.pilotId)
   const [kindLabel, kindCls] = KIND_STYLE[trade.kind]
-  const fee = trade.kind === 'deposit' || trade.kind === 'withdraw' ? 0 : feeOn(trade.notional)
   const fresh = Date.now() - trade.at < 12_000
   return (
     <div className={`flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3 text-sm ${fresh ? 'feed-in' : ''}`}>
-      <span className="w-16 shrink-0">
+      <span className={`w-16 shrink-0`}>
         <span className={`rounded border px-1.5 py-0.5 text-[9px] font-extrabold tracking-[0.08em] ${kindCls}`}>{kindLabel}</span>
       </span>
       <span className={`w-12 shrink-0 font-medium ${trade.side === 'buy' ? 't-up' : 't-down'}`}>
@@ -522,11 +454,11 @@ function TradeRow({ trade }: { trade: FakeTrade }) {
       </span>
       <span className="tnum w-20 shrink-0 font-bold text-fg">{trade.ticker}</span>
       <span className="min-w-0 flex-1 truncate text-fg/70">
-        {trade.pilotName}
+        {pilot?.name ?? trade.assetName}
         <span className="hidden text-muted-2 sm:inline"> · {trade.assetName}</span>
       </span>
       <span className="tnum w-24 shrink-0 text-right text-fg">{usd(trade.notional, { decimals: 2 })}</span>
-      <span className="tnum w-20 shrink-0 text-right text-muted">{usd(fee, { decimals: 2 })}</span>
+      <span className="tnum w-20 shrink-0 text-right text-muted">{usd(trade.fee, { decimals: 2 })}</span>
       <span className="tnum w-20 shrink-0 text-right text-xs text-muted-2">{ago(trade.at)}</span>
     </div>
   )
@@ -555,11 +487,12 @@ function Tile({ label, value, sub, accent }: { label: string; value: string; sub
   )
 }
 
-function PositionRow({ position }: { position: FakePosition }) {
-  const { pilot } = position
-  // market P&L before fees: value = deployed + P&L - fees, per row
-  const pnlAbs = position.value - position.allocation + position.feesAccrued
-  const pnlPct = (pnlAbs / position.allocation) * 100
+function PositionRow({ position }: { position: Position }) {
+  const store = useStore()
+  const pilot = store.getPilot(position.pilotId)
+  if (!pilot) return null
+  const value = store.positionValue(position)
+  const pnl = store.positionPnl(position)
 
   return (
     <div className="card card-hover rounded-2xl p-4 sm:p-5">
@@ -572,16 +505,16 @@ function PositionRow({ position }: { position: FakePosition }) {
           </div>
         </Link>
 
-        <Sparkline data={position.spark} width={96} height={34} />
+        {pilot.spark && pilot.spark.length > 1 && <Sparkline data={pilot.spark} width={96} height={34} />}
 
         <div className="grid grid-cols-4 gap-5 sm:gap-7">
           <Col label="Deployed" value={usd(position.allocation)} />
-          <Col label="Value" value={usd(position.value)} />
+          <Col label="Value" value={usd(value)} />
           <Col
             label="P&L"
-            value={`${pnlAbs >= 0 ? '+' : ''}${usd(pnlAbs)}`}
-            sub={pct(pnlPct)}
-            accent={pnlAbs >= 0 ? 'var(--color-up)' : 'var(--color-down)'}
+            value={`${pnl.abs >= 0 ? '+' : ''}${usd(pnl.abs)}`}
+            sub={pct(pnl.pct)}
+            accent={pnl.abs >= 0 ? 'var(--color-up)' : 'var(--color-down)'}
           />
           <Col
             label="Trades · fees"
@@ -594,7 +527,12 @@ function PositionRow({ position }: { position: FakePosition }) {
           <Link to={`/pilot/${pilot.id}`} className={btn('secondary', 'px-3.5 py-2 text-xs')}>
             Add
           </Link>
-          <button className={btn('ghost', 'px-3.5 py-2 text-xs text-down hover:bg-down/10')}>Stop</button>
+          <button
+            className={btn('ghost', 'px-3.5 py-2 text-xs text-down hover:bg-down/10')}
+            onClick={() => store.stop(position.pilotId)}
+          >
+            Stop
+          </button>
         </div>
       </div>
 
@@ -624,3 +562,4 @@ function Col({ label, value, sub, accent }: { label: string; value: string; sub?
     </div>
   )
 }
+

@@ -54,7 +54,7 @@ function requireAddress(req, res) {
 }
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, feeBps: TRADE_FEE_BPS, prices: feedStatus() })
+  res.json({ ok: true, demo: DEMO, feeBps: TRADE_FEE_BPS, prices: feedStatus() })
 })
 
 app.get('/api/prices', (_req, res) => {
@@ -206,8 +206,20 @@ app.get('/api/portfolio', (req, res) => {
   res.json({ account: accountView(account) })
 })
 
-app.post('/api/deposit', (_req, res) => {
-  res.status(403).json({ error: 'practice deposits are disabled; send SOL/USDC to your deposit address' })
+/** Demo deployments simulate balances; production only accepts real chain deposits. */
+const DEMO = process.env.ALUTIC_DEMO === '1'
+
+app.post('/api/deposit', (req, res) => {
+  if (!DEMO) {
+    return res.status(403).json({ error: 'practice deposits are disabled; send SOL/USDC to your deposit address' })
+  }
+  const address = requireAddress(req, res)
+  if (!address) return
+  const amount = Number(req.body?.amount)
+  if (!(amount > 0) || amount > 100_000) return res.status(400).json({ error: 'demo deposits are capped at $100,000' })
+  const account = getOrCreateAccount(address)
+  account.balance += amount
+  res.json({ account: accountView(account) })
 })
 
 /**
@@ -216,6 +228,7 @@ app.post('/api/deposit', (_req, res) => {
  * both the account balance and the real on-chain funds.
  */
 app.post('/api/withdraw', async (req, res) => {
+  if (DEMO) return res.status(403).json({ error: 'demo mode: balances are simulated, there is nothing to withdraw' })
   const address = requireAddress(req, res)
   if (!address) return
   if (!SOL_RE.test(address)) {

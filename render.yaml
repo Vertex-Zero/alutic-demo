@@ -1,4 +1,4 @@
-# Public demo of Alutic: showcase dashboard with fake balances, real market data elsewhere.
+# Public demo of Alutic: simulated balances, real market data, clearly labeled.
 services:
   - type: web
     name: alutic-demo
@@ -8,6 +8,10 @@ services:
     startCommand: node server/index.js
     healthCheckPath: /api/health
     envVars:
+      - key: ALUTIC_DEMO
+        value: '1'
+      - key: VITE_DEMO
+        value: '1'
       - key: SOLANA_RPC
         value: https://api.devnet.solana.com
       - key: NODE_VERSION

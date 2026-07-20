@@ -1,9 +1,8 @@
-import { useState, useSyncExternalStore } from 'react'
+import { useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { useStore } from '../lib/store'
-import { Logo } from './ui'
+import { useStore, DEMO_MODE } from '../lib/store'
+import { Logo, btn } from './ui'
 import { usd, shortAddr } from '../lib/format'
-import { SHOWCASE_ADDRESS, showcaseBalance } from '../lib/showcase'
 
 const LINKS = [
   { to: '/explore', label: 'Pilots' },
@@ -13,8 +12,7 @@ const LINKS = [
 ]
 
 export function Navbar() {
-  const { connected, address, balance } = useStore()
-  const showcaseUsdc = useSyncExternalStore(showcaseBalance.subscribe, showcaseBalance.get)
+  const { connected, address, balance, connect } = useStore()
   const [open, setOpen] = useState(false)
   const loc = useLocation()
 
@@ -25,6 +23,11 @@ export function Navbar() {
           <div className="flex items-center gap-9">
             <span className="flex items-center gap-2">
               <Logo />
+              {DEMO_MODE && (
+                <span className="rounded-full bg-gold/[0.15] px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-gold">
+                  Demo
+                </span>
+              )}
             </span>
             <nav className="hidden items-center gap-1 md:flex">
               {LINKS.map((l) => (
@@ -44,15 +47,19 @@ export function Navbar() {
           </div>
 
           <div className="flex items-center gap-2.5">
-            <Link to="/dashboard" className="hidden items-center gap-2.5 rounded-xl border-2 border-line py-1.5 pl-3.5 pr-1.5 sm:flex">
-              <span className="tnum text-sm text-fg">
-                {usd(connected ? balance : showcaseUsdc, { decimals: 0 })}
-              </span>
-              <span className="flex items-center gap-1.5 rounded-lg bg-accent/[0.1] px-2.5 py-1">
-                <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-up" />
-                <span className="tnum text-xs text-accent">{shortAddr(connected ? address : SHOWCASE_ADDRESS)}</span>
-              </span>
-            </Link>
+            {connected ? (
+              <Link to="/dashboard" className="hidden items-center gap-2.5 rounded-xl border-2 border-line py-1.5 pl-3.5 pr-1.5 sm:flex">
+                <span className="tnum text-sm text-fg">{usd(balance, { decimals: 0 })}</span>
+                <span className="flex items-center gap-1.5 rounded-lg bg-accent/[0.1] px-2.5 py-1">
+                  <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-up" />
+                  <span className="tnum text-xs text-accent">{shortAddr(address)}</span>
+                </span>
+              </Link>
+            ) : (
+              <button className={btn('primary', 'h-10 px-4 text-[13px]')} onClick={connect}>
+                Connect wallet
+              </button>
+            )}
             <button
               className="grid h-9 w-9 place-items-center rounded-xl text-fg/70 hover:bg-fg/5 md:hidden"
               onClick={() => setOpen((o) => !o)}
